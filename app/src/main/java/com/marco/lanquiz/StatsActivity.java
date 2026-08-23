@@ -79,7 +79,7 @@ public class StatsActivity extends AppCompatActivity {
 
         LinearLayout summary = Ui.card(this, box);
         Ui.text(this, summary, getString(R.string.riepilogo_generale), 17,
-                getColor(R.color.indigo), true);
+                getColor(R.color.accent), true);
         Ui.row(this, summary, getString(R.string.tentativi_totali), String.valueOf(attempts), 0);
         Ui.row(this, summary, getString(R.string.domande_risposte), String.valueOf(questions), 0);
         Ui.row(this, summary, getString(R.string.media_generale), average + "%",

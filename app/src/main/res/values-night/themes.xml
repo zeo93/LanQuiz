@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Stesso tema, solo la barra di stato cambia verso: i colori arrivano
+         gia scuri da values-night/colors.xml. -->
     <style name="Theme.LanQuiz" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/indigo</item>
-        <item name="colorOnPrimary">#1E1B4B</item>
-        <item name="colorPrimaryContainer">@color/indigo_soft</item>
-        <item name="colorSecondary">@color/indigo</item>
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorOnPrimary">@color/on_accent</item>
+        <item name="colorPrimaryContainer">@color/accent_soft</item>
+        <item name="colorOnPrimaryContainer">@color/accent</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorSecondaryContainer">@color/accent_soft</item>
+        <item name="colorOnSecondaryContainer">@color/accent</item>
         <item name="android:colorBackground">@color/bg</item>
         <item name="colorSurface">@color/surface</item>
         <item name="colorSurfaceVariant">@color/surface2</item>
         <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/muted</item>
+        <item name="colorOutline">@color/line</item>
+        <item name="colorOutlineVariant">@color/line</item>
         <item name="colorError">@color/ko</item>
-        <item name="android:statusBarColor">@color/surface</item>
+        <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>
         <item name="android:windowLightStatusBar">false</item>
+
+        <item name="shapeAppearanceCornerExtraSmall">@style/Shape.LanQuiz.XS</item>
+        <item name="shapeAppearanceCornerSmall">@style/Shape.LanQuiz.S</item>
+        <item name="shapeAppearanceCornerMedium">@style/Shape.LanQuiz.M</item>
+        <item name="shapeAppearanceCornerLarge">@style/Shape.LanQuiz.L</item>
+        <item name="shapeAppearanceCornerExtraLarge">@style/Shape.LanQuiz.XL</item>
     </style>
 </resources>

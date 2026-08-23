@@ -72,7 +72,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:textColor="@color/indigo"
+            android:textColor="@color/accent"
             android:textSize="12sp"
             android:visibility="gone" />
 

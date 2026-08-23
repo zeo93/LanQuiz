@@ -11,7 +11,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/mappa_domande"
-        android:textColor="@color/indigo"
+        android:textColor="@color/accent"
         android:textSize="17sp"
         android:textStyle="bold" />
 

@@ -28,11 +28,11 @@
 
             <TextView
                 android:id="@+id/percent"
+                style="@style/Text.Display"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textSize="52sp"
-                android:textStyle="bold" />
+                android:textSize="58sp" />
 
             <TextView
                 android:id="@+id/verdict"
@@ -115,7 +115,7 @@
         android:layout_marginTop="18dp"
         android:layout_marginBottom="4dp"
         android:text="@string/rivedi"
-        android:textColor="@color/indigo"
+        android:textColor="@color/accent"
         android:textSize="17sp"
         android:textStyle="bold" />
 </LinearLayout>

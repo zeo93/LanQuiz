@@ -2,7 +2,7 @@
 <resources>
     <dimen name="page_padding">16dp</dimen>
     <dimen name="content_max_width">0dp</dimen>
-    <dimen name="question_text">18sp</dimen>
+    <dimen name="question_text">20sp</dimen>
     <integer name="bank_columns">1</integer>
     <integer name="answer_columns">1</integer>
 </resources>

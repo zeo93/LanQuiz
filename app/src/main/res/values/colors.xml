@@ -1,19 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Palette dell'app Flask originale: indigo come accento, verde/rosso per
-         l'esito delle risposte, superfici ardesia. -->
-    <color name="indigo">#4F46E5</color>
-    <color name="indigo_soft">#EEF2FF</color>
-    <color name="bg">#F1F5F9</color>
+    <!-- Direzione "Scheda": teal come accento, ambra per quello che scade oggi,
+         superfici quasi bianche. Stessi valori della web app. -->
+    <color name="accent">#0D9488</color>
+    <color name="on_accent">#FFFFFF</color>
+    <color name="accent_soft">#D5F4EF</color>
+
+    <color name="bg">#F2F6F7</color>
     <color name="surface">#FFFFFF</color>
-    <color name="surface2">#E2E8F0</color>
-    <color name="on_surface">#0F172A</color>
-    <color name="muted">#64748B</color>
-    <color name="ok">#16A34A</color>
-    <color name="ok_bg">#DCFCE7</color>
-    <color name="ko">#DC2626</color>
-    <color name="ko_bg">#FEE2E2</color>
-    <color name="warn">#EA580C</color>
-    <color name="flag">#D97706</color>
-    <color name="icon_bg">#4F46E5</color>
+    <color name="surface2">#E4ECEE</color>
+    <color name="on_surface">#0A1220</color>
+    <color name="muted">#586A76</color>
+    <color name="line">#DBE5E8</color>
+
+    <color name="ok">#047857</color>
+    <color name="ok_bg">#D6F3E7</color>
+    <color name="ko">#BE123C</color>
+    <color name="ko_bg">#FFE1E7</color>
+    <color name="warn">#B45309</color>
+    <color name="warn_bg">#FBEED6</color>
+    <color name="flag">#B45309</color>
+
+    <color name="icon_bg">#101725</color>
 </resources>

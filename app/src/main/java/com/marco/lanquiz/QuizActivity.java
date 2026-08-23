@@ -307,9 +307,9 @@ public class QuizActivity extends AppCompatActivity {
             // un bottone disabilitato sbiadisce: qui il colore deve restare leggibile
             b.setAlpha(1f);
         } else if (selected) {
-            b.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.indigo_soft)));
-            b.setStrokeColor(ColorStateList.valueOf(getColor(R.color.indigo)));
-            b.setTextColor(getColor(R.color.indigo));
+            b.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.accent_soft)));
+            b.setStrokeColor(ColorStateList.valueOf(getColor(R.color.accent)));
+            b.setTextColor(getColor(R.color.accent));
             b.setTypeface(null, Typeface.BOLD);
         } else {
             b.setStrokeColor(ColorStateList.valueOf(getColor(R.color.surface2)));
@@ -450,8 +450,8 @@ public class QuizActivity extends AppCompatActivity {
                     bg = getColor(it.right() ? R.color.ok_bg : R.color.ko_bg);
                     fg = getColor(it.right() ? R.color.ok : R.color.ko);
                 } else if (it.answered()) {
-                    bg = getColor(R.color.indigo_soft);
-                    fg = getColor(R.color.indigo);
+                    bg = getColor(R.color.accent_soft);
+                    fg = getColor(R.color.accent);
                 } else {
                     bg = getColor(R.color.surface2);
                 }
@@ -460,7 +460,7 @@ public class QuizActivity extends AppCompatActivity {
                 shape.setCornerRadius(Ui.dp(QuizActivity.this, 10));
                 shape.setColor(bg);
                 if (position == session.index) {
-                    shape.setStroke(Ui.dp(QuizActivity.this, 2), getColor(R.color.indigo));
+                    shape.setStroke(Ui.dp(QuizActivity.this, 2), getColor(R.color.accent));
                 } else if (it.flagged) {
                     shape.setStroke(Ui.dp(QuizActivity.this, 2), getColor(R.color.flag));
                 }

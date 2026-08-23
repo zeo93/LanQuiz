@@ -64,7 +64,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         // --- aspetto --------------------------------------------------------
         LinearLayout look = Ui.card(this, box);
-        Ui.text(this, look, getString(R.string.aspetto), 17, getColor(R.color.indigo), true);
+        Ui.text(this, look, getString(R.string.aspetto), 17, getColor(R.color.accent), true);
         Ui.text(this, look, getString(R.string.tema), 14, getColor(R.color.muted), false);
 
         ChipGroup themes = new ChipGroup(this);
@@ -94,7 +94,7 @@ public class SettingsActivity extends AppCompatActivity {
         // --- valutazione ----------------------------------------------------
         LinearLayout grading = Ui.card(this, box);
         Ui.text(this, grading, getString(R.string.valutazione), 17,
-                getColor(R.color.indigo), true);
+                getColor(R.color.accent), true);
         TextView pass = Ui.text(this, grading, getString(R.string.soglia_superamento)
                 + ": " + Store.passPct(this) + "%", 14, getColor(R.color.muted), false);
         Slider slider = new Slider(this);
@@ -113,7 +113,7 @@ public class SettingsActivity extends AppCompatActivity {
         // --- comportamento --------------------------------------------------
         LinearLayout behaviour = Ui.card(this, box);
         Ui.text(this, behaviour, getString(R.string.comportamento), 17,
-                getColor(R.color.indigo), true);
+                getColor(R.color.accent), true);
         addSwitch(behaviour, R.string.vibrazione, Store.haptics(this),
                 v -> Store.set(this, Store.HAPTICS, v));
         addSwitch(behaviour, R.string.avanzamento_automatico, Store.autoNext(this),
@@ -122,7 +122,7 @@ public class SettingsActivity extends AppCompatActivity {
         // --- quiz preinstallati nascosti -------------------------------------
         LinearLayout bundled = Ui.card(this, box);
         Ui.text(this, bundled, getString(R.string.quiz_preinstallati), 17,
-                getColor(R.color.indigo), true);
+                getColor(R.color.accent), true);
         int hidden = Store.hiddenBanks(this).size();
         if (hidden == 0) {
             Ui.text(this, bundled, getString(R.string.nessun_nascosto), 14,
@@ -138,7 +138,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         // --- backup e trasferimento ------------------------------------------
         LinearLayout backup = Ui.card(this, box);
-        Ui.text(this, backup, getString(R.string.backup), 17, getColor(R.color.indigo), true);
+        Ui.text(this, backup, getString(R.string.backup), 17, getColor(R.color.accent), true);
         Ui.text(this, backup, getString(R.string.backup_desc), 14,
                 getColor(R.color.muted), false);
         MaterialButton esporta = outlined(getString(R.string.esporta_backup));
@@ -152,7 +152,7 @@ public class SettingsActivity extends AppCompatActivity {
         // --- aggiornamenti ---------------------------------------------------
         LinearLayout updates = Ui.card(this, box);
         Ui.text(this, updates, getString(R.string.aggiornamenti), 17,
-                getColor(R.color.indigo), true);
+                getColor(R.color.accent), true);
         Ui.text(this, updates, getString(R.string.versione_app,
                 UpdateChecker.currentVersion(this)), 14, getColor(R.color.muted), false);
         addSwitch(updates, R.string.controlla_avvio, Store.updateCheck(this),

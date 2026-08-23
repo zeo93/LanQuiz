@@ -33,8 +33,10 @@ public final class Ui {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMargins(0, dp(c, 6), 0, dp(c, 6));
         card.setLayoutParams(lp);
-        card.setRadius(dp(c, 16));
-        card.setCardElevation(dp(c, 1));
+        card.setRadius(dp(c, 20));
+        card.setCardElevation(0);
+        card.setStrokeColor(c.getColor(R.color.line));
+        card.setStrokeWidth(dp(c, 1));
         card.setContentPadding(dp(c, 16), dp(c, 16), dp(c, 16), dp(c, 16));
         parent.addView(card);
         LinearLayout col = new LinearLayout(c);
@@ -61,7 +63,7 @@ public final class Ui {
     }
 
     public static TextView sectionTitle(Context c, LinearLayout parent, String title) {
-        TextView tv = text(c, parent, title, 17, c.getColor(R.color.indigo), true);
+        TextView tv = text(c, parent, title, 17, c.getColor(R.color.accent), true);
         ((LinearLayout.LayoutParams) tv.getLayoutParams()).topMargin = dp(c, 14);
         return tv;
     }

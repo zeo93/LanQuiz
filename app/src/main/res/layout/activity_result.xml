@@ -12,7 +12,7 @@
         android:background="?attr/colorSurface"
         app:navigationIcon="@drawable/ic_back"
         app:title="@string/risultato"
-        app:titleTextColor="@color/indigo" />
+        app:titleTextColor="@color/on_surface" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list"

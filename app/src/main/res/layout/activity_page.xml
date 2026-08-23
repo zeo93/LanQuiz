@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"
         app:navigationIcon="@drawable/ic_back"
-        app:titleTextColor="@color/indigo" />
+        app:titleTextColor="@color/on_surface" />
 
     <ScrollView
         android:layout_width="match_parent"

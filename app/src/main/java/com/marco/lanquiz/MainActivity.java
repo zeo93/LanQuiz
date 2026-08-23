@@ -3,6 +3,7 @@ package com.marco.lanquiz;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,8 +28,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.chip.Chip;
-import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
@@ -52,9 +53,14 @@ public class MainActivity extends AppCompatActivity {
         int best = -1;
         int due;        // domande in scadenza oggi
         int unseen;     // domande mai affrontate
+        int assodate;   // dalla scatola 3 in su: non tornano prima di una settimana
         int flags;
         long nextDue;   // quando torna la prossima, se oggi non c'è nulla
         final List<String> tags = new ArrayList<>();
+
+        int pctAssodate() {
+            return bank.count > 0 ? Math.round(assodate * 100f / bank.count) : 0;
+        }
     }
 
     private LinearLayout banksBox;
@@ -146,66 +152,65 @@ public class MainActivity extends AppCompatActivity {
     // -------------------------------------------- impostazioni sessione
 
     private void bindSettings() {
-        ChipGroup modeGroup = findViewById(R.id.group_mode);
-        Chip studio = findViewById(R.id.chip_studio);
-        Chip esame = findViewById(R.id.chip_esame);
+        MaterialButtonToggleGroup modeGroup = findViewById(R.id.group_mode);
         TextView modeHint = findViewById(R.id.mode_hint);
 
         boolean exam = Store.MODE_EXAM.equals(Store.mode(this));
-        (exam ? esame : studio).setChecked(true);
+        modeGroup.check(exam ? R.id.chip_esame : R.id.chip_studio);
         modeHint.setText(exam ? R.string.modalita_esame_desc : R.string.modalita_studio_desc);
-        modeGroup.setOnCheckedStateChangeListener((g, ids) -> {
-            boolean isExam = g.getCheckedChipId() == R.id.chip_esame;
+        modeGroup.addOnButtonCheckedListener((g, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            boolean isExam = checkedId == R.id.chip_esame;
             Store.set(this, Store.MODE, isExam ? Store.MODE_EXAM : Store.MODE_STUDY);
             modeHint.setText(isExam ? R.string.modalita_esame_desc : R.string.modalita_studio_desc);
         });
 
-        ChipGroup countGroup = findViewById(R.id.group_count);
-        Chip countCustom = findViewById(R.id.chip_count_custom);
+        MaterialButtonToggleGroup countGroup = findViewById(R.id.group_count);
+        MaterialButton countCustom = findViewById(R.id.chip_count_custom);
+        MaterialButtonToggleGroup timerGroup = findViewById(R.id.group_timer);
+        MaterialButton timerCustom = findViewById(R.id.chip_timer_custom);
+
         applyCountSelection(countGroup, countCustom, Store.count(this));
-        countGroup.setOnCheckedStateChangeListener((g, ids) -> {
-            int checked = g.getCheckedChipId();
-            if (checked == R.id.chip_count_custom) {
+        countGroup.addOnButtonCheckedListener((g, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            if (checkedId == R.id.chip_count_custom) {
                 askNumber(R.string.quante_domande, Math.max(1, Store.count(this)), value -> {
                     Store.set(this, Store.COUNT, value);
                     applyCountSelection(countGroup, countCustom, value);
                 });
-            } else if (checked == R.id.chip_all) {
+            } else if (checkedId == R.id.chip_all) {
                 Store.set(this, Store.COUNT, 0);
                 countCustom.setText(R.string.personalizza);
-            } else if (checked == R.id.chip_10) {
+            } else if (checkedId == R.id.chip_10) {
                 Store.set(this, Store.COUNT, 10);
                 countCustom.setText(R.string.personalizza);
-            } else if (checked == R.id.chip_25) {
+            } else if (checkedId == R.id.chip_25) {
                 Store.set(this, Store.COUNT, 25);
                 countCustom.setText(R.string.personalizza);
-            } else if (checked == R.id.chip_50) {
-                // "Prova esame" replica la scorciatoia dell'app originale:
-                // 50 domande, 90 minuti e nessun riscontro fino alla consegna.
+            } else if (checkedId == R.id.chip_50) {
                 Store.set(this, Store.COUNT, 50);
-                Store.set(this, Store.TIMER, 90);
-                Store.set(this, Store.MODE, Store.MODE_EXAM);
                 countCustom.setText(R.string.personalizza);
-                esame.setChecked(true);
-                applyTimerSelection(findViewById(R.id.group_timer),
-                        findViewById(R.id.chip_timer_custom), 90);
             }
         });
 
-        ChipGroup timerGroup = findViewById(R.id.group_timer);
-        Chip timerCustom = findViewById(R.id.chip_timer_custom);
         applyTimerSelection(timerGroup, timerCustom, Store.timer(this));
-        timerGroup.setOnCheckedStateChangeListener((g, ids) -> {
-            int checked = g.getCheckedChipId();
-            if (checked == R.id.chip_timer_custom) {
+        timerGroup.addOnButtonCheckedListener((g, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            if (checkedId == R.id.chip_timer_custom) {
                 askNumber(R.string.timer_personalizzato, Math.max(1, Store.timer(this)), value -> {
                     Store.set(this, Store.TIMER, value);
                     applyTimerSelection(timerGroup, timerCustom, value);
                 });
             } else {
-                int minutes = checked == R.id.chip_t15 ? 15
-                        : checked == R.id.chip_t30 ? 30
-                        : checked == R.id.chip_t90 ? 90 : 0;
+                int minutes = checkedId == R.id.chip_t15 ? 15
+                        : checkedId == R.id.chip_t30 ? 30
+                        : checkedId == R.id.chip_t90 ? 90 : 0;
                 Store.set(this, Store.TIMER, minutes);
                 timerCustom.setText(R.string.personalizza);
             }
@@ -220,7 +225,8 @@ public class MainActivity extends AppCompatActivity {
         shuffleA.setOnCheckedChangeListener((b, v) -> Store.set(this, Store.SHUFFLE_A, v));
     }
 
-    private void applyCountSelection(ChipGroup group, Chip custom, int value) {
+    private void applyCountSelection(MaterialButtonToggleGroup group, MaterialButton custom,
+                                     int value) {
         int id = value == 0 ? R.id.chip_all
                 : value == 10 ? R.id.chip_10
                 : value == 25 ? R.id.chip_25
@@ -233,7 +239,8 @@ public class MainActivity extends AppCompatActivity {
         group.check(id);
     }
 
-    private void applyTimerSelection(ChipGroup group, Chip custom, int minutes) {
+    private void applyTimerSelection(MaterialButtonToggleGroup group, MaterialButton custom,
+                                     int minutes) {
         int id = minutes == 0 ? R.id.chip_t0
                 : minutes == 15 ? R.id.chip_t15
                 : minutes == 30 ? R.id.chip_t30
@@ -303,8 +310,13 @@ public class MainActivity extends AppCompatActivity {
                 }
                 List<String> ids = new ArrayList<>();
                 Map<String, List<String>> mine = Store.userTags(this, b.id);
+                Map<String, Store.Card> cards = Store.cards(this, b.id);
                 for (Question q : Banks.load(this, b)) {
                     ids.add(q.id());
+                    Store.Card card = cards.get(q.id());
+                    if (card != null && card.box >= 3) {
+                        r.assodate++;
+                    }
                     for (String tag : Store.tagsOf(q, mine.get(q.id()))) {
                         if (!r.tags.contains(tag)) {
                             r.tags.add(tag);
@@ -320,9 +332,102 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 rows.clear();
                 rows.addAll(fresh);
+                bindOggi();
                 render();
             });
         }).start();
+    }
+
+    /** La scheda in cima: quante domande scadono oggi e quanto è assodato in tutto. */
+    private void bindOggi() {
+        MaterialCardView card = findViewById(R.id.oggi_card);
+        if (card == null) {
+            return;
+        }
+        int dovute = 0;
+        int domande = 0;
+        int assodate = 0;
+        int affrontate = 0;
+        int banchiDovuti = 0;
+        long prossimo = 0;
+        for (Row r : rows) {
+            dovute += r.due;
+            domande += r.bank.count;
+            assodate += r.assodate;
+            affrontate += r.bank.count - r.unseen;
+            if (r.due > 0) {
+                banchiDovuti++;
+            }
+            if (r.nextDue > 0 && (prossimo == 0 || r.nextDue < prossimo)) {
+                prossimo = r.nextDue;
+            }
+        }
+        if (domande == 0) {
+            card.setVisibility(View.GONE);
+            return;
+        }
+        card.setVisibility(View.VISIBLE);
+
+        TextView tag = findViewById(R.id.oggi_tag);
+        TextView titolo = findViewById(R.id.oggi_titolo);
+        TextView sotto = findViewById(R.id.oggi_sotto);
+        MaterialButton vai = findViewById(R.id.oggi_vai);
+        MaterialButton esame = findViewById(R.id.oggi_esame);
+        RingView ring = findViewById(R.id.oggi_ring);
+
+        // tre stati: non hai ancora cominciato, hai roba in scadenza, sei in pari
+        int tinta;
+        if (affrontate == 0) {
+            tag.setText(R.string.da_cominciare);
+            tinta = getColor(R.color.muted);
+            tag.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.surface2)));
+            titolo.setText(getString(R.string.domande_pronte, domande));
+            sotto.setText(R.string.oggi_prima_volta);
+        } else if (dovute > 0) {
+            tag.setText(R.string.in_scadenza_oggi_tag);
+            tinta = getColor(R.color.warn);
+            tag.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.warn_bg)));
+            titolo.setText(dovute == 1
+                    ? getString(R.string.una_domanda_n, dovute)
+                    : getString(R.string.n_domande, dovute));
+            sotto.setText(getString(R.string.oggi_su_banchi, banchiDovuti,
+                    getString(banchiDovuti == 1 ? R.string.un_banco : R.string.piu_banchi)));
+        } else {
+            tag.setText(R.string.ripasso_in_pari_tag);
+            tinta = getColor(R.color.ok);
+            tag.setBackgroundTintList(ColorStateList.valueOf(getColor(R.color.ok_bg)));
+            titolo.setText(R.string.oggi_niente);
+            sotto.setText(prossimo > 0
+                    ? getString(R.string.oggi_prossimo, Ui.quando(this, prossimo))
+                    : getString(R.string.oggi_tutto_assodato));
+        }
+        tag.setTextColor(tinta);
+
+        ring.set(domande > 0 ? Math.round(assodate * 100f / domande) : 0,
+                getColor(R.color.accent), getString(R.string.assodato));
+
+        vai.setVisibility(dovute > 0 ? View.VISIBLE : View.GONE);
+        vai.setOnClickListener(v -> avviaRipassoGenerale());
+        esame.setOnClickListener(v -> {
+            Store.set(this, Store.COUNT, 50);
+            Store.set(this, Store.TIMER, 90);
+            Store.set(this, Store.MODE, Store.MODE_EXAM);
+            bindSettings();
+            Toast.makeText(this, R.string.prova_esame_impostata, Toast.LENGTH_LONG).show();
+        });
+    }
+
+    /** Ripassa il banco che ha più domande in scadenza: un tocco, si parte. */
+    private void avviaRipassoGenerale() {
+        Row scelto = null;
+        for (Row r : rows) {
+            if (r.due > 0 && (scelto == null || r.due > scelto.due)) {
+                scelto = r;
+            }
+        }
+        if (scelto != null) {
+            start(scelto.bank, Session.Filter.DA_RIPASSARE, null);
+        }
     }
 
     private void render() {
@@ -399,9 +504,11 @@ public class MainActivity extends AppCompatActivity {
         int m = Ui.dp(this, 4);
         lp.setMargins(m, m, m, m);
         card.setLayoutParams(lp);
-        card.setRadius(Ui.dp(this, 14));
-        card.setCardElevation(Ui.dp(this, 1));
-        card.setContentPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
+        card.setRadius(Ui.dp(this, 20));
+        card.setCardElevation(0);
+        card.setStrokeColor(getColor(R.color.line));
+        card.setStrokeWidth(Ui.dp(this, 1));
+        card.setContentPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14));
         card.setClickable(true);
         card.setFocusable(true);
         card.setOnClickListener(v -> onBankClicked(row));
@@ -416,25 +523,43 @@ public class MainActivity extends AppCompatActivity {
         card.addView(inner, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        // Stato del ripasso: prima come colore e come anello, poi come parola.
+        String stato;
+        int colore;
+        int sfondoPastiglia;
+        if (row.due > 0) {
+            stato = getString(R.string.stato_oggi, row.due);
+            colore = getColor(R.color.warn);
+            sfondoPastiglia = getColor(R.color.warn_bg);
+        } else if (row.unseen == row.bank.count) {
+            stato = getString(R.string.stato_mai_iniziato);
+            colore = getColor(R.color.muted);
+            sfondoPastiglia = getColor(R.color.surface2);
+        } else if (row.nextDue > 0) {
+            stato = Ui.quando(this, row.nextDue);
+            colore = getColor(R.color.accent);
+            sfondoPastiglia = getColor(R.color.accent_soft);
+        } else {
+            stato = getString(R.string.stato_in_pari);
+            colore = getColor(R.color.accent);
+            sfondoPastiglia = getColor(R.color.accent_soft);
+        }
+
+        RingView ring = new RingView(this);
+        ring.set(row.pctAssodate(), colore, null);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                Ui.dp(this, 46), Ui.dp(this, 46));
+        rlp.setMarginEnd(Ui.dp(this, 13));
+        inner.addView(ring, rlp);
+
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         inner.addView(col, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        // Le stesse voci del tocco prolungato, ma raggiungibili anche a vista.
-        ImageButton more = new ImageButton(this);
-        more.setImageResource(R.drawable.ic_more);
-        more.setBackground(null);
-        more.setContentDescription(getString(R.string.opzioni_quiz));
-        more.setOnClickListener(v -> showBankMenu(row.bank));
-        inner.addView(more, new LinearLayout.LayoutParams(
-                Ui.dp(this, 36), Ui.dp(this, 36)));
-
         TextView title = new TextView(this);
         title.setText(row.bank.title);
-        title.setTextSize(16);
-        title.setTypeface(null, android.graphics.Typeface.BOLD);
-        title.setTextColor(getColor(R.color.on_surface));
+        title.setTextAppearance(R.style.Text_Titolo);
         col.addView(title);
 
         List<String> bits = new ArrayList<>();
@@ -446,36 +571,43 @@ public class MainActivity extends AppCompatActivity {
         if (row.flags > 0) {
             bits.add(getString(R.string.contrassegnate_n, row.flags));
         }
+
+        LinearLayout riga = new LinearLayout(this);
+        riga.setOrientation(LinearLayout.HORIZONTAL);
+        riga.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rowLp.topMargin = Ui.dp(this, 3);
+        col.addView(riga, rowLp);
+
         TextView sub = new TextView(this);
         sub.setText(TextUtils.join(" · ", bits));
         sub.setTextSize(13);
         sub.setTextColor(getColor(R.color.muted));
-        col.addView(sub);
+        riga.addView(sub, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // Lo stato del ripasso è la cosa che guardi per prima: sta su una riga sua.
-        String ripasso;
-        int colore;
-        if (row.due > 0) {
-            ripasso = getString(R.string.in_scadenza_oggi, row.due);
-            colore = getColor(R.color.warn);
-        } else if (row.unseen == row.bank.count) {
-            ripasso = getString(R.string.mai_iniziato);
-            colore = getColor(R.color.muted);
-        } else if (row.nextDue > 0) {
-            ripasso = getString(R.string.prossimo_ripasso, Ui.quando(this, row.nextDue));
-            colore = getColor(R.color.ok);
-        } else {
-            ripasso = getString(R.string.tutto_ripassato);
-            colore = getColor(R.color.ok);
-        }
-        if (row.unseen > 0 && row.unseen < row.bank.count) {
-            ripasso += " · " + getString(R.string.mai_viste_n, row.unseen);
-        }
-        TextView stato = new TextView(this);
-        stato.setText(ripasso);
-        stato.setTextSize(13);
-        stato.setTextColor(colore);
-        col.addView(stato);
+        TextView pastiglia = new TextView(this);
+        pastiglia.setText(stato);
+        pastiglia.setTextSize(12);
+        pastiglia.setTypeface(null, android.graphics.Typeface.BOLD);
+        pastiglia.setTextColor(colore);
+        pastiglia.setBackgroundResource(R.drawable.bg_pill);
+        pastiglia.setBackgroundTintList(ColorStateList.valueOf(sfondoPastiglia));
+        pastiglia.setPadding(Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 10), Ui.dp(this, 4));
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        plp.setMarginStart(Ui.dp(this, 8));
+        riga.addView(pastiglia, plp);
+
+        // Le stesse voci del tocco prolungato, ma raggiungibili anche a vista.
+        ImageButton more = new ImageButton(this);
+        more.setImageResource(R.drawable.ic_more);
+        more.setBackground(null);
+        more.setContentDescription(getString(R.string.opzioni_quiz));
+        more.setOnClickListener(v -> showBankMenu(row.bank));
+        inner.addView(more, new LinearLayout.LayoutParams(
+                Ui.dp(this, 32), Ui.dp(this, 32)));
 
         line.addView(card);
     }

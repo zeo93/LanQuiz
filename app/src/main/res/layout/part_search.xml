@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
         android:visibility="gone"
-        app:cardBackgroundColor="@color/indigo_soft"
+        app:cardBackgroundColor="@color/accent_soft"
         app:cardCornerRadius="16dp"
         app:contentPadding="16dp">
 
@@ -24,7 +24,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/riprendi_titolo"
-                android:textColor="@color/indigo"
+                android:textColor="@color/accent"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
