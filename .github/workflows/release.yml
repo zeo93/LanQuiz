@@ -1,11 +1,13 @@
 # Pubblica una Release con l'APK firmato quando si spinge un tag vX.Y.
 #
-# Richiede tre secret nel repository (Settings -> Secrets -> Actions):
+# È la strada alternativa a .\rilascia.ps1, che fa la stessa cosa dal PC.
+# Serve solo se si vogliono pubblicare le versioni da GitHub: in quel caso
+# vanno impostati tre secret (Settings -> Secrets and variables -> Actions):
 #   KEYSTORE_BASE64   il file app/release.keystore codificato base64
 #   KEYSTORE_PASSWORD la password dello store
 #   KEY_PASSWORD      la password della chiave
-# Senza i secret il job si ferma con un messaggio chiaro invece di pubblicare
-# un APK non firmato, che non sarebbe installabile.
+# Senza i secret il job non fa nulla e lo dice: pubblicare un APK non firmato
+# sarebbe peggio, perché non si installerebbe.
 name: Release APK
 
 on:
@@ -23,26 +25,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cerca la chiave di firma
+        id: chiave
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::Nessun secret KEYSTORE_BASE64: la firma da GitHub non è configurata, si pubblica con .\\rilascia.ps1 dal PC."
+            echo "pronta=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "$KEYSTORE_BASE64" | base64 -d > app/release.keystore
+            echo "pronta=si" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-java@v4
+        if: steps.chiave.outputs.pronta == 'si'
         with:
           distribution: temurin
           java-version: "17"
 
       - uses: android-actions/setup-android@v3
+        if: steps.chiave.outputs.pronta == 'si'
 
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.chiave.outputs.pronta == 'si'
 
-      - name: Ricostruisci il keystore dai secret
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Manca il secret KEYSTORE_BASE64: senza chiave l'APK non sarebbe installabile."
-            exit 1
-          fi
-          echo "$KEYSTORE_BASE64" | base64 -d > app/release.keystore
+      - name: Prova il lettore dei banchi
+        if: steps.chiave.outputs.pronta == 'si'
+        run: gradle testReleaseUnitTest
 
       - name: Compila l'APK di release
+        if: steps.chiave.outputs.pronta == 'si'
         env:
           LANQUIZ_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           LANQUIZ_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -51,12 +64,14 @@ jobs:
 
       - name: Rinomina l'APK con il numero di versione
         id: apk
+        if: steps.chiave.outputs.pronta == 'si'
         run: |
           version="${GITHUB_REF_NAME#v}"
           mv app/build/outputs/apk/release/app-release.apk "LanQuiz-${version}.apk"
           echo "path=LanQuiz-${version}.apk" >> "$GITHUB_OUTPUT"
 
       - name: Pubblica la Release
+        if: steps.chiave.outputs.pronta == 'si'
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.apk.outputs.path }}
