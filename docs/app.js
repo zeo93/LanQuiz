@@ -6,7 +6,7 @@
    sono identici a quelli dell'app Android: un backup si travasa nei due sensi. */
 "use strict";
 
-const VERSION = "1.1";
+const VERSION = "1.2";
 const REPO = "zeo93/LanQuiz";
 const STORE_KEY = "lanquiz";
 

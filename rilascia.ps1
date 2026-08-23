@@ -34,6 +34,20 @@ function Scrivi($percorso, $contenuto) {
     [System.IO.File]::WriteAllText($percorso, $contenuto, $senzaBom)
 }
 
+# git e gh scrivono avvisi innocui su stderr (per esempio quello sui fine riga),
+# e con ErrorActionPreference = Stop PowerShell li scambia per errori fatali.
+# Qui conta solo il codice di uscita.
+function Esegui($eseguibile, [string[]]$argomenti) {
+    $prima = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & $eseguibile @argomenti
+    $codice = $LASTEXITCODE
+    $ErrorActionPreference = $prima
+    if ($codice -ne 0) {
+        throw "$eseguibile $($argomenti -join ' ') e' uscito con codice $codice"
+    }
+}
+
 $buildGradle = Join-Path $radice "app\build.gradle"
 $testo = Leggi $buildGradle
 
@@ -60,13 +74,14 @@ Copy-Item $apkSorgente $apk -Force
 
 $messaggio = if ($Note) { $Note } else { "Versione $Versione" }
 
-git -C $radice add app/build.gradle docs/app.js
-git -C $radice commit -m $messaggio
-git -C $radice tag "v$Versione"
-git -C $radice push
-git -C $radice push --tags
+Esegui git @("-C", $radice, "add", "app/build.gradle", "docs/app.js")
+Esegui git @("-C", $radice, "commit", "-m", $messaggio)
+Esegui git @("-C", $radice, "tag", "v$Versione")
+Esegui git @("-C", $radice, "push")
+Esegui git @("-C", $radice, "push", "--tags")
 
-gh release create "v$Versione" $apk --repo zeo93/LanQuiz --title "LanQuiz $Versione" --notes $messaggio
+Esegui gh @("release", "create", "v$Versione", $apk, "--repo", "zeo93/LanQuiz",
+    "--title", "LanQuiz $Versione", "--notes", $messaggio)
 
 Write-Host "Fatto: https://github.com/zeo93/LanQuiz/releases/tag/v$Versione" -ForegroundColor Green
 Write-Host "Web app: https://zeo93.github.io/LanQuiz/" -ForegroundColor Green
