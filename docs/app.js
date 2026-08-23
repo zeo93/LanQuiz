@@ -57,6 +57,48 @@ function whenShort(ts) {
   return new Date(ts).toLocaleDateString("it-IT", { day: "numeric", month: "short" });
 }
 
+/* Icone disegnate, non glifi: scalano e si ricolorano col testo. */
+const ICONE = {
+  statistiche: '<path d="M4 19V9M10 19V5M16 19v-7M4 19h16"/>',
+  aggiungi: '<path d="M12 5v14M5 12h14"/>',
+  impostazioni: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6"/>',
+  indietro: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+  bandiera: '<path d="M5 21V4M5 4h11l-1.6 3.5L16 11H5"/>',
+  mappa: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.4"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.4"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.4"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.4"/>',
+  altro: '<circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/>',
+};
+
+const icona = (nome, misura) =>
+  `<svg width="${misura || 20}" height="${misura || 20}" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">${ICONE[nome]}</svg>`;
+
+/**
+ * Anello di avanzamento. L'SVG è disegnato su una griglia fissa di 100 e steso
+ * al 100% del contenitore: così la misura la decide il CSS, e l'anello si
+ * adatta allo schermo senza che il disegno vada rifatto a ogni ridimensionamento.
+ */
+function anello(pct, variante, colore, etichetta) {
+  const spessore = variante === "mini" ? 11 : 9;
+  const r = 50 - spessore / 2 - 1;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - Math.max(0, Math.min(100, pct)) / 100);
+  return `<div class="ring ${variante}">
+    <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
+      <circle cx="50" cy="50" r="${r.toFixed(1)}" fill="none" stroke="var(--surface2)"
+              stroke-width="${spessore}"></circle>
+      ${pct > 0 ? `<circle cx="50" cy="50" r="${r.toFixed(1)}" fill="none" stroke="${colore}"
+              stroke-width="${spessore}" stroke-linecap="round"
+              stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"
+              transform="rotate(-90 50 50)"></circle>` : ""}
+    </svg>
+    <div class="dentro"><div>
+      <div class="val">${pct}%</div>
+      ${etichetta ? `<div class="cap">${esc(etichetta)}</div>` : ""}
+    </div></div>
+  </div>`;
+}
+
 function shuffle(list) {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -360,12 +402,14 @@ async function allBanks() {
     let due = 0;
     let unseen = 0;
     let nextDue = 0;
+    let assodate = 0;   // dalla scatola 3 in su: non tornano prima di una settimana
     for (const q of questions) {
       for (const t of tagsOf(id, q)) tags.add(t);
       const card = cards[q.id];
       if (!card) unseen++;
       else if (card.due <= adesso) due++;
       else if (!nextDue || card.due < nextDue) nextDue = card.due;
+      if (card && card.box >= 3) assodate++;
     }
     banks.push({
       id,
@@ -376,6 +420,8 @@ async function allBanks() {
       best: attempts.length ? Math.max(...attempts.map((h) => pct(h))) : -1,
       due,
       unseen,
+      assodate,
+      pctAssodate: questions.length ? Math.round((assodate / questions.length) * 100) : 0,
       nextDue: due ? 0 : nextDue,
       flags: setOf(store.flags, id).size,
       tags: Array.from(tags).sort(),
@@ -628,9 +674,9 @@ let homeQuery = "";
 
 async function renderHome() {
   setHeader("LanQuiz",
-    `<button class="icon-btn accent" id="a-stats" title="Statistiche">&#9776;</button>
-     <button class="icon-btn accent" id="a-import" title="Importa">&#43;</button>
-     <button class="icon-btn accent" id="a-settings" title="Impostazioni">&#9881;</button>`,
+    `<button class="icon-btn accent" id="a-stats" title="Statistiche">${icona("statistiche")}</button>
+     <button class="icon-btn accent" id="a-import" title="Importa un quiz">${icona("aggiungi")}</button>
+     <button class="icon-btn accent" id="a-settings" title="Impostazioni">${icona("impostazioni")}</button>`,
     false);
 
   const s = store.settings;
@@ -641,6 +687,8 @@ async function renderHome() {
   const timerValue = [0, 15, 30, 90].includes(s.timer) ? s.timer : "custom";
 
   view.innerHTML = `
+    <div id="oggi"></div>
+
     ${store.resume ? `
       <div class="card soft">
         <b>Quiz interrotto</b>
@@ -653,49 +701,40 @@ async function renderHome() {
         </div>
       </div>` : ""}
 
-    <input type="text" id="q" placeholder="Cerca un quiz…" value="${esc(homeQuery)}">
-
-    <div class="card">
-      <b style="color:var(--indigo)">Impostazioni sessione</b>
-
-      <label class="field">Modalità</label>
-      <div class="chips">
+    <label class="field">Come vuoi esercitarti</label>
+    <div class="chips">
+      <div class="segmented primaria">
         ${chip("mode", "studio", "Studio", s.mode === "studio")}
         ${chip("mode", "esame", "Esame", s.mode === "esame")}
       </div>
-      <div class="small" style="margin-top:4px">
-        ${s.mode === "esame"
-          ? "Nessun riscontro fino alla consegna."
-          : "Risposta svelata subito, con spiegazione."}
-      </div>
-
-      <label class="field">Numero di domande</label>
-      <div class="chips">
+      <div class="segmented">
         ${chip("count", 0, "Tutte", countValue === 0)}
         ${chip("count", 10, "10", countValue === 10)}
         ${chip("count", 25, "25", countValue === 25)}
         ${chip("count", 50, "Prova esame", countValue === 50)}
-        ${chip("count", "custom", countValue === "custom" ? s.count : "Altro…", countValue === "custom")}
+        ${chip("count", "custom", countValue === "custom" ? s.count : "Altro", countValue === "custom")}
       </div>
-
-      <label class="field">Timer</label>
-      <div class="chips">
-        ${chip("timer", 0, "Nessuno", timerValue === 0)}
-        ${chip("timer", 15, "15 min", timerValue === 15)}
-        ${chip("timer", 30, "30 min", timerValue === 30)}
-        ${chip("timer", 90, "90 min", timerValue === 90)}
-        ${chip("timer", "custom", timerValue === "custom" ? s.timer + " min" : "Altro…", timerValue === "custom")}
+      <div class="segmented">
+        ${chip("timer", 0, "No timer", timerValue === 0)}
+        ${chip("timer", 15, "15′", timerValue === 15)}
+        ${chip("timer", 30, "30′", timerValue === 30)}
+        ${chip("timer", 90, "90′", timerValue === 90)}
+        ${chip("timer", "custom", timerValue === "custom" ? s.timer + "′" : "Altro", timerValue === "custom")}
       </div>
-
-      <label class="switch">
-        <input type="checkbox" id="sq" ${s.shuffleQ ? "checked" : ""}> Mescola le domande
-      </label>
-      <label class="switch">
-        <input type="checkbox" id="sa" ${s.shuffleA ? "checked" : ""}> Mescola le risposte
-      </label>
+    </div>
+    <div class="chips" style="margin-top:10px">
+      <span class="small">${s.mode === "esame"
+        ? "Nessun riscontro fino alla consegna."
+        : "Risposta svelata subito, con spiegazione."}</span>
+      <span class="grow"></span>
+      ${chip("sq", "toggle", "Mescola le domande", s.shuffleQ)}
+      ${chip("sa", "toggle", "Mescola le risposte", s.shuffleA)}
     </div>
 
-    <div id="banks"><div class="small">Carico i quiz…</div></div>
+    <label class="field">I tuoi quiz</label>
+    <input type="text" id="q" placeholder="Cerca un quiz…" value="${esc(homeQuery)}">
+
+    <div id="banks"><div class="small" style="padding:20px 0">Carico i quiz…</div></div>
   `;
 
   $("#a-stats").onclick = () => go({ name: "stats" });
@@ -719,17 +758,23 @@ async function renderHome() {
   const search = $("#q");
   search.oninput = () => {
     homeQuery = search.value.trim();
-    paintBanks();
+    paintBanks(bancheCaricate);
   };
-
-  $("#sq").onchange = (e) => { store.settings.shuffleQ = e.target.checked; save(); };
-  $("#sa").onchange = (e) => { store.settings.shuffleA = e.target.checked; save(); };
 
   $$(".chip", view).forEach((c) => {
     c.onclick = () => onSettingChip(c.dataset.group, c.dataset.value);
   });
 
-  paintBanks();
+  caricaHome();
+}
+
+/** I banchi si leggono una volta sola: la scheda di oggi e l'elenco li condividono. */
+let bancheCaricate = [];
+
+async function caricaHome() {
+  bancheCaricate = await allBanks();
+  paintOggi(bancheCaricate);
+  paintBanks(bancheCaricate);
 }
 
 function onSettingChip(group, value) {
@@ -757,15 +802,95 @@ function onSettingChip(group, value) {
     } else {
       s.timer = Number(value);
     }
+  } else if (group === "sq") {
+    s.shuffleQ = !s.shuffleQ;
+  } else if (group === "sa") {
+    s.shuffleA = !s.shuffleA;
   }
   save();
   renderHome();
 }
 
-async function paintBanks() {
+/** La scheda in cima: quante domande scadono oggi e quanto materiale è assodato. */
+function paintOggi(banks) {
+  const box = $("#oggi");
+  if (!box) return;
+
+  const dovute = banks.reduce((n, b) => n + b.due, 0);
+  const domande = banks.reduce((n, b) => n + b.count, 0);
+  const assodate = banks.reduce((n, b) => n + b.assodate, 0);
+  const banchiDovuti = banks.filter((b) => b.due).length;
+  const pct = domande ? Math.round((assodate / domande) * 100) : 0;
+
+  if (!domande) {
+    box.innerHTML = "";
+    return;
+  }
+
+  const prossimo = banks.filter((b) => b.nextDue).map((b) => b.nextDue).sort()[0];
+  const affrontate = banks.reduce((n, b) => n + (b.count - b.unseen), 0);
+
+  // tre stati diversi: non hai ancora cominciato, hai qualcosa in scadenza,
+  // oppure sei in pari e il ripasso torna più avanti
+  let etichetta;
+  let titolo;
+  let sotto;
+  let calmo = true;
+  if (!affrontate) {
+    etichetta = "DA COMINCIARE";
+    titolo = `${domande} domande pronte`;
+    sotto = "Fai un primo quiz: da lì in poi LanQuiz sa cosa riproporti e quando.";
+  } else if (dovute) {
+    etichetta = "IN SCADENZA OGGI";
+    titolo = dovute + (dovute === 1 ? " domanda" : " domande");
+    sotto = `Su ${banchiDovuti} ${banchiDovuti === 1 ? "banco" : "banchi"}. Si parte dalle più in ritardo.`;
+    calmo = false;
+  } else {
+    etichetta = "RIPASSO IN PARI";
+    titolo = "Niente da ripassare";
+    sotto = prossimo
+      ? `Il prossimo ripasso torna ${whenShort(prossimo)}.`
+      : "Hai assodato tutto quello che hai affrontato finora.";
+  }
+
+  box.innerHTML = `
+    <div class="hero">
+      <div class="testo">
+        <span class="tag ${calmo ? "calmo" : ""}"><i></i> ${etichetta}</span>
+        <div class="numerone">${esc(titolo)}</div>
+        <div class="small">${esc(sotto)}</div>
+        <div class="row mt">
+          ${dovute ? `<button class="btn" id="oggi-vai">Ripassa adesso</button>` : ""}
+          <button class="btn ${dovute ? "ghost" : ""}" id="oggi-esame">Prova d'esame</button>
+        </div>
+      </div>
+      ${anello(pct, "grande", "var(--accent)", "assodato")}
+    </div>
+  `;
+
+  const vai = $("#oggi-vai");
+  if (vai) vai.onclick = () => avviaRipassoGenerale(banks);
+  $("#oggi-esame").onclick = () => {
+    store.settings.count = 50;
+    store.settings.timer = 90;
+    store.settings.mode = "esame";
+    save();
+    renderHome();
+    toast("Impostata la prova d'esame: 50 domande in 90 minuti. Scegli il banco.");
+  };
+}
+
+/** Ripassa il banco che ha più domande in scadenza: un tocco, si parte. */
+async function avviaRipassoGenerale(banks) {
+  const dovuti = banks.filter((b) => b.due).sort((a, b) => b.due - a.due);
+  if (!dovuti.length) return;
+  startQuiz(dovuti[0], "ripasso");
+}
+
+function paintBanks(tutti) {
   const box = $("#banks");
   if (!box) return;
-  const banks = (await allBanks()).filter((b) => {
+  const banks = tutti.filter((b) => {
     const q = homeQuery.toLowerCase();
     return !q || b.title.toLowerCase().includes(q) || b.category.toLowerCase().includes(q);
   });
@@ -783,35 +908,40 @@ async function paintBanks() {
     for (const b of list) {
       const bits = [b.count === 1 ? "1 domanda" : `${b.count} domande`];
       if (b.best >= 0) bits.push(`record ${b.best}%`);
-      if (b.flags) bits.push(`${b.flags} contrassegnate`);
 
       let stato;
+      let classe;
       let colore;
       if (b.due) {
-        stato = `${b.due} da ripassare oggi`;
+        stato = `${b.due} oggi`;
+        classe = "dovute";
         colore = "var(--warn)";
       } else if (b.unseen === b.count) {
-        stato = "Mai iniziato";
+        stato = "mai iniziato";
+        classe = "";
         colore = "var(--muted)";
       } else if (b.nextDue) {
-        stato = `Prossimo ripasso ${whenShort(b.nextDue)}`;
-        colore = "var(--ok)";
+        stato = whenShort(b.nextDue);
+        classe = "pari";
+        colore = "var(--accent)";
       } else {
-        stato = "Ripasso in pari";
-        colore = "var(--ok)";
+        stato = "in pari";
+        classe = "pari";
+        colore = "var(--accent)";
       }
-      if (b.unseen && b.unseen < b.count) stato += ` · ${b.unseen} mai viste`;
 
       html += `
         <div class="card bank tap" data-bank="${esc(b.id)}">
-          <div class="spread">
-            <div>
-              <div class="title">${esc(b.title)}</div>
-              <div class="small">${esc(bits.join(" · "))}</div>
-              <div class="small" style="color:${colore}">${esc(stato)}</div>
+          ${anello(b.pctAssodate, "mini", colore)}
+          <div class="corpo">
+            <div class="title">${esc(b.title)}</div>
+            <div class="chips" style="gap:8px;margin-top:3px">
+              <span class="small">${esc(bits.join(" · "))}</span>
+              <span class="pill ${classe}">${esc(stato)}</span>
             </div>
-            <button class="icon-btn" data-menu="${esc(b.id)}" title="Opzioni">&#8942;</button>
           </div>
+          <button class="icon-btn" data-menu="${esc(b.id)}" title="Opzioni"
+                  style="width:32px;height:32px">${icona("altro", 18)}</button>
         </div>`;
     }
     html += `</div>`;
@@ -947,8 +1077,10 @@ function renderQuiz() {
   const last = session.index === session.items.length - 1;
 
   setHeader(session.bankTitle,
-    `<button class="icon-btn ${it.flagged ? "flagged" : ""}" id="a-flag" title="Contrassegna">&#9873;</button>
-     <button class="icon-btn accent" id="a-map" title="Mappa domande">&#9638;</button>`,
+    `<button class="icon-btn ${it.flagged ? "flagged" : ""}" id="a-flag"
+             title="Contrassegna">${icona("bandiera")}</button>
+     <button class="icon-btn accent" id="a-map"
+             title="Mappa domande">${icona("mappa")}</button>`,
     true);
   btnBack.title = "Esci dal quiz";
 
@@ -1169,7 +1301,7 @@ function renderResult() {
         </div>
         ${it.q.explanation ? `<div class="small" style="margin-top:8px">Spiegazione: ${esc(it.q.explanation)}</div>` : ""}
         ${nota ? `<div style="margin-top:8px;font-style:italic;font-size:14px">${esc(nota)}</div>` : ""}
-        ${tags.length ? `<div style="margin-top:6px;font-size:12px;color:var(--indigo)">${
+        ${tags.length ? `<div style="margin-top:6px;font-size:12px;color:var(--accent)">${
           tags.map((t) => "#" + esc(t)).join("  ")}</div>` : ""}
         <div class="spread" style="margin-top:4px">
           <div>
@@ -1327,7 +1459,7 @@ function renderStats() {
 
   view.innerHTML = `
     <div class="card">
-      <b style="color:var(--indigo)">Riepilogo generale</b>
+      <b class="titolo-card">Riepilogo generale</b>
       <div class="spread mt"><span class="small">Tentativi</span><b>${history.length}</b></div>
       <div class="spread"><span class="small">Domande affrontate</span><b>${totals.questions}</b></div>
       <div class="spread"><span class="small">Media</span><b style="color:${tint(average)}">${average}%</b></div>
@@ -1414,7 +1546,7 @@ function renderSettings() {
 
   view.innerHTML = `
     <div class="card">
-      <b style="color:var(--indigo)">Aspetto</b>
+      <b class="titolo-card">Aspetto</b>
       <label class="field">Tema</label>
       <div class="chips">
         ${themeChip("sistema", "Come il sistema")}
@@ -1424,13 +1556,13 @@ function renderSettings() {
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Valutazione</b>
+      <b class="titolo-card">Valutazione</b>
       <label class="field" id="pass-label">Soglia di superamento: ${s.passPct}%</label>
       <input type="range" min="30" max="100" step="5" value="${s.passPct}" id="pass" style="width:100%">
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Comportamento</b>
+      <b class="titolo-card">Comportamento</b>
       <label class="switch">
         <input type="checkbox" id="auto" ${s.autoNext ? "checked" : ""}>
         Passa da sola alla domanda dopo
@@ -1438,7 +1570,7 @@ function renderSettings() {
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Backup e trasferimento</b>
+      <b class="titolo-card">Backup e trasferimento</b>
       <div class="small mt">Un solo file con quiz importati, stato del ripasso, note,
         argomenti e statistiche: serve a passare dal telefono a qui e viceversa.</div>
       <button class="btn ghost wide mt" id="bk-export">Esporta backup</button>
@@ -1449,14 +1581,14 @@ function renderSettings() {
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Quiz preinstallati</b>
+      <b class="titolo-card">Quiz preinstallati</b>
       ${store.hidden.length
         ? `<button class="btn ghost wide mt" id="restore">Rimetti in lista quelli nascosti (${store.hidden.length})</button>`
         : `<div class="small mt">Nessun quiz nascosto.</div>`}
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Versione</b>
+      <b class="titolo-card">Versione</b>
       <div class="small mt">Web app ${VERSION}. Si aggiorna da sola a ogni apertura con rete.</div>
       <div class="small mt">
         App Android: <a href="https://github.com/${REPO}/releases/latest">scarica l'APK</a>
@@ -1588,13 +1720,13 @@ function renderImport() {
   setHeader("Importa quiz", "", true);
   view.innerHTML = `
     <div class="card">
-      <b style="color:var(--indigo)">Da un file</b>
+      <b class="titolo-card">Da un file</b>
       <div class="small mt">File .txt, .csv o .json già nel formato del quiz.</div>
       <input type="file" id="file" accept=".txt,.csv,.json,text/plain,text/csv,application/json" class="mt">
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Incolla il testo</b>
+      <b class="titolo-card">Incolla il testo</b>
       <label class="field">Nome del quiz</label>
       <input type="text" id="name" placeholder="Il mio quiz">
       <label class="field">Una domanda per riga</label>
@@ -1603,7 +1735,7 @@ function renderImport() {
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Da un indirizzo web</b>
+      <b class="titolo-card">Da un indirizzo web</b>
       <label class="field">Indirizzo</label>
       <input type="url" id="url" placeholder="https://…">
       <button class="btn ghost wide mt" id="do-url">Importa</button>
@@ -1611,7 +1743,7 @@ function renderImport() {
     </div>
 
     <div class="card">
-      <b style="color:var(--indigo)">Formato dei file</b>
+      <b class="titolo-card">Formato dei file</b>
       <div class="small mt">
         Una domanda per riga, campi separati da punto e virgola:<br>
         <code>domanda;risposta esatta;errata;errata</code><br><br>
@@ -1676,7 +1808,7 @@ function sheet(title, bodyHtml, wire) {
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `<div class="sheet">
-    <b style="color:var(--indigo)">${esc(title)}</b>
+    <b class="titolo-card">${esc(title)}</b>
     ${bodyHtml}
     <button class="btn text wide mt" data-close>Chiudi</button>
   </div>`;
