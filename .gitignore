@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+
+# La chiave di firma non va nel repo pubblico: senza di essa chiunque potrebbe
+# pubblicare un APK installabile sopra questa app. Copia di sicurezza a parte!
+*.keystore
+*.apk

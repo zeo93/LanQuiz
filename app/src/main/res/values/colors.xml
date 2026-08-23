@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Palette dell'app Flask originale: indigo come accento, verde/rosso per
+         l'esito delle risposte, superfici ardesia. -->
+    <color name="indigo">#4F46E5</color>
+    <color name="indigo_soft">#EEF2FF</color>
+    <color name="bg">#F1F5F9</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface2">#E2E8F0</color>
+    <color name="on_surface">#0F172A</color>
+    <color name="muted">#64748B</color>
+    <color name="ok">#16A34A</color>
+    <color name="ok_bg">#DCFCE7</color>
+    <color name="ko">#DC2626</color>
+    <color name="ko_bg">#FEE2E2</color>
+    <color name="warn">#EA580C</color>
+    <color name="flag">#D97706</color>
+    <color name="icon_bg">#4F46E5</color>
+</resources>

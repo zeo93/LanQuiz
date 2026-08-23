@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tablet grandi: due colonne di banchi e piu respiro ai margini. -->
+    <dimen name="page_padding">28dp</dimen>
+    <dimen name="content_max_width">1000dp</dimen>
+    <integer name="bank_columns">2</integer>
+</resources>

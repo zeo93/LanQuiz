@@ -1,0 +1,59 @@
+# Pubblica una nuova versione di LanQuiz.
+#
+#   .\rilascia.ps1 1.1 "Aggiunta la modalita' esame"
+#
+# Cosa fa, nell'ordine: alza la versione nell'app Android e nella web app,
+# compila l'APK firmato, committa, crea il tag e pubblica la Release su GitHub
+# con l'APK allegato. Da quel momento l'app installata propone l'aggiornamento
+# da sola e GitHub Pages serve la web app aggiornata.
+
+param(
+    [Parameter(Mandatory = $true)][string]$Versione,
+    [string]$Note = ""
+)
+
+$ErrorActionPreference = "Stop"
+$radice = $PSScriptRoot
+$gradle = "C:\Users\marco\.gradle\dist\gradle-8.13\bin\gradle.bat"
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+
+if ($Versione -notmatch '^\d+\.\d+(\.\d+)?$') {
+    throw "La versione va scritta come 1.1 oppure 1.1.2, non '$Versione'."
+}
+
+$buildGradle = Join-Path $radice "app\build.gradle"
+$testo = Get-Content $buildGradle -Raw
+
+if ($testo -notmatch 'versionCode (\d+)') { throw "versionCode non trovato in app/build.gradle" }
+$codiceNuovo = [int]$Matches[1] + 1
+
+$testo = $testo -replace 'versionCode \d+', "versionCode $codiceNuovo"
+$testo = $testo -replace 'versionName "[^"]*"', "versionName `"$Versione`""
+Set-Content $buildGradle $testo -Encoding utf8 -NoNewline
+
+# La web app mostra la sua versione in fondo alla pagina: va tenuta allineata.
+$appJs = Join-Path $radice "docs\app.js"
+$js = Get-Content $appJs -Raw
+$js = $js -replace 'const VERSION = "[^"]*";', "const VERSION = `"$Versione`";"
+Set-Content $appJs $js -Encoding utf8 -NoNewline
+
+Write-Host "Versione $Versione (versionCode $codiceNuovo) - compilo..." -ForegroundColor Cyan
+& $gradle -p $radice assembleRelease
+if ($LASTEXITCODE -ne 0) { throw "compilazione fallita" }
+
+$apkSorgente = Join-Path $radice "app\build\outputs\apk\release\app-release.apk"
+$apk = Join-Path $radice "LanQuiz-$Versione.apk"
+Copy-Item $apkSorgente $apk -Force
+
+$messaggio = if ($Note) { $Note } else { "Versione $Versione" }
+
+git -C $radice add app/build.gradle docs/app.js
+git -C $radice commit -m $messaggio
+git -C $radice tag "v$Versione"
+git -C $radice push
+git -C $radice push --tags
+
+gh release create "v$Versione" $apk --repo zeo93/LanQuiz --title "LanQuiz $Versione" --notes $messaggio
+
+Write-Host "Fatto: https://github.com/zeo93/LanQuiz/releases/tag/v$Versione" -ForegroundColor Green
+Write-Host "Web app: https://zeo93.github.io/LanQuiz/" -ForegroundColor Green

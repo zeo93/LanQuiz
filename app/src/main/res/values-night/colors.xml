@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stessa palette in versione scura: ardesia profonda, indigo piu chiaro
+         per restare leggibile sul fondo scuro. -->
+    <color name="indigo">#818CF8</color>
+    <color name="indigo_soft">#1E1B4B</color>
+    <color name="bg">#0F172A</color>
+    <color name="surface">#1E293B</color>
+    <color name="surface2">#334155</color>
+    <color name="on_surface">#E2E8F0</color>
+    <color name="muted">#94A3B8</color>
+    <color name="ok">#4ADE80</color>
+    <color name="ok_bg">#14532D</color>
+    <color name="ko">#F87171</color>
+    <color name="ko_bg">#4C1D1D</color>
+    <color name="warn">#FB923C</color>
+    <color name="flag">#FBBF24</color>
+</resources>

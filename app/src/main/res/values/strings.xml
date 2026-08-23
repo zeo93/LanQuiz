@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LanQuiz</string>
+
+    <!-- Home -->
+    <string name="cerca_quiz">Cerca un quiz…</string>
+    <string name="impostazioni_sessione">Impostazioni sessione</string>
+    <string name="modalita">Modalità</string>
+    <string name="modalita_studio">Studio</string>
+    <string name="modalita_esame">Esame</string>
+    <string name="modalita_studio_desc">Risposta svelata subito, con spiegazione.</string>
+    <string name="modalita_esame_desc">Nessun riscontro fino alla consegna.</string>
+    <string name="numero_domande">Numero di domande</string>
+    <string name="tutte">Tutte</string>
+    <string name="prova_esame">Prova esame</string>
+    <string name="personalizza">Altro…</string>
+    <string name="quante_domande">Quante domande?</string>
+    <string name="timer_label">Timer</string>
+    <string name="senza_timer">Nessuno</string>
+    <string name="minuti_n">%d min</string>
+    <string name="timer_personalizzato">Minuti (0 = nessun timer)</string>
+    <string name="mescola_domande">Mescola le domande</string>
+    <string name="mescola_risposte">Mescola le risposte</string>
+    <string name="nessun_quiz">Nessun quiz. Importane uno dal menu in alto.</string>
+    <string name="nessun_risultato_ricerca">Nessun quiz corrisponde a «%s».</string>
+    <string name="n_domande">%d domande</string>
+    <string name="una_domanda">1 domanda</string>
+    <string name="da_ripassare">%d da ripassare</string>
+    <string name="contrassegnate_n">%d contrassegnate</string>
+    <string name="record_pct">record %d%%</string>
+    <string name="riprendi_titolo">Quiz interrotto</string>
+    <string name="riprendi_msg">%1$s — domanda %2$d di %3$d</string>
+    <string name="riprendi">Riprendi</string>
+    <string name="scarta">Scarta</string>
+
+    <!-- Avvio quiz -->
+    <string name="avvia">Avvia</string>
+    <string name="scegli_cosa_ripassare">%s</string>
+    <string name="tutte_le_domande">Tutte le domande (%d)</string>
+    <string name="solo_sbagliate">Solo quelle sbagliate (%d)</string>
+    <string name="solo_contrassegnate">Solo le contrassegnate (%d)</string>
+    <string name="banco_vuoto">Questo banco non contiene domande valide.</string>
+    <string name="niente_da_ripassare">Non ci sono domande da ripassare in questo banco.</string>
+
+    <!-- Quiz -->
+    <string name="domanda_di">%1$d / %2$d</string>
+    <string name="precedente">Indietro</string>
+    <string name="successiva">Avanti</string>
+    <string name="consegna">Consegna</string>
+    <string name="termina">Termina</string>
+    <string name="contrassegna">Contrassegna</string>
+    <string name="mappa_domande">Mappa domande</string>
+    <string name="scegli_piu_risposte">Più risposte corrette: scegli tutte quelle giuste, poi conferma.</string>
+    <string name="conferma_risposta">Conferma risposta</string>
+    <string name="spiegazione">Spiegazione</string>
+    <string name="risposta_esatta">Risposta esatta</string>
+    <string name="risposta_sbagliata">Risposta sbagliata</string>
+    <string name="consegna_conferma">Consegnare il quiz? Hai risposto a %1$d domande su %2$d.</string>
+    <string name="esci_conferma">Uscire dal quiz? Puoi riprenderlo più tardi dalla home.</string>
+    <string name="esci_e_salva">Esci e salva</string>
+    <string name="esci_e_scarta">Esci e scarta</string>
+    <string name="annulla">Annulla</string>
+    <string name="tempo_scaduto">Tempo scaduto: il quiz è stato consegnato.</string>
+    <string name="senza_risposta">Senza risposta</string>
+
+    <!-- Risultato -->
+    <string name="risultato">Risultato</string>
+    <string name="quiz_completato">Quiz completato</string>
+    <string name="promosso">Superato</string>
+    <string name="bocciato">Non superato</string>
+    <string name="risposte_corrette">%1$d risposte esatte su %2$d</string>
+    <string name="soglia_pct">Soglia di superamento: %d%%</string>
+    <string name="tempo_impiegato">Tempo impiegato: %s</string>
+    <string name="riprova_tutte">Rifai tutto</string>
+    <string name="riprova_sbagliate">Rifai le sbagliate (%d)</string>
+    <string name="torna_lista">Torna alla lista</string>
+    <string name="rivedi">Rivedi le domande</string>
+    <string name="la_tua_risposta">La tua risposta: %s</string>
+    <string name="condividi_risultato">Condividi</string>
+    <string name="riepilogo_condivisione">LanQuiz — %1$s: %2$d%% (%3$d/%4$d)</string>
+
+    <!-- Statistiche -->
+    <string name="statistiche">Statistiche</string>
+    <string name="riepilogo_generale">Riepilogo generale</string>
+    <string name="tentativi_totali">Tentativi</string>
+    <string name="domande_risposte">Domande affrontate</string>
+    <string name="media_generale">Media</string>
+    <string name="tempo_totale">Tempo totale</string>
+    <string name="per_banco">Per banco</string>
+    <string name="ultimi_tentativi">Ultimi tentativi</string>
+    <string name="nessuna_statistica">Nessun tentativo registrato: completa un quiz e torna qui.</string>
+    <string name="stat_riga">%1$d tentativi · media %2$d%% · record %3$d%%</string>
+    <string name="azzera_statistiche">Azzera statistiche</string>
+    <string name="azzera_conferma">Cancellare storico, medie e lista delle domande da ripassare?</string>
+    <string name="azzera">Azzera</string>
+    <string name="esporta_csv">Esporta in CSV</string>
+
+    <!-- Importazione -->
+    <string name="importa">Importa quiz</string>
+    <string name="importa_da_file">Da un file</string>
+    <string name="importa_da_testo">Incolla il testo</string>
+    <string name="importa_da_url">Da un indirizzo web</string>
+    <string name="incolla_testo">Una domanda per riga: domanda;risposta esatta;errata;errata</string>
+    <string name="nome_del_quiz">Nome del quiz</string>
+    <string name="indirizzo_web">https://…</string>
+    <string name="importa_azione">Importa</string>
+    <string name="importato_n">Importato «%1$s»: %2$d domande.</string>
+    <string name="import_fallito">Importazione non riuscita: %s</string>
+    <string name="nessuna_domanda_valida">nessuna domanda valida nel file</string>
+    <string name="formato_titolo">Formato dei file</string>
+    <string name="formato_testo">Una domanda per riga, campi separati da punto e virgola:\n\ndomanda;risposta esatta;errata;errata\n\nEstensioni facoltative:\n• un asterisco davanti a una risposta la marca come corretta, così una domanda può averne più di una\n• un campo che inizia con ## è la spiegazione mostrata dopo la risposta\n• le righe che iniziano con # sono commenti\n\nSenza asterischi vale la regola di sempre: la prima risposta è quella esatta.</string>
+
+    <!-- Gestione banco -->
+    <string name="rinomina">Rinomina</string>
+    <string name="elimina">Elimina</string>
+    <string name="esporta">Esporta</string>
+    <string name="nascondi">Nascondi</string>
+    <string name="elimina_conferma">Eliminare «%s»? Si perdono anche i suoi risultati.</string>
+    <string name="nascondi_conferma">Nascondere «%s» dalla lista? È un quiz preinstallato: potrai rimetterlo dalle impostazioni.</string>
+    <string name="rinomina_fallita">Nome già in uso.</string>
+    <string name="condividi_quiz">Condividi quiz</string>
+
+    <!-- Impostazioni -->
+    <string name="impostazioni">Impostazioni</string>
+    <string name="aspetto">Aspetto</string>
+    <string name="tema">Tema</string>
+    <string name="tema_sistema">Come il sistema</string>
+    <string name="tema_chiaro">Chiaro</string>
+    <string name="tema_scuro">Scuro</string>
+    <string name="valutazione">Valutazione</string>
+    <string name="soglia_superamento">Soglia di superamento</string>
+    <string name="comportamento">Comportamento</string>
+    <string name="vibrazione">Vibrazione sulla risposta</string>
+    <string name="avanzamento_automatico">Passa da sola alla domanda dopo</string>
+    <string name="quiz_preinstallati">Quiz preinstallati</string>
+    <string name="ripristina_nascosti">Rimetti in lista quelli nascosti (%d)</string>
+    <string name="nessun_nascosto">Nessun quiz nascosto.</string>
+    <string name="dati">Dati</string>
+
+    <!-- Aggiornamenti -->
+    <string name="aggiornamenti">Aggiornamenti</string>
+    <string name="versione_app">Versione installata: %s</string>
+    <string name="controlla_avvio">Controlla gli aggiornamenti all\'avvio</string>
+    <string name="controlla_aggiornamenti">Controlla adesso</string>
+    <string name="nessun_aggiornamento">Nessun aggiornamento disponibile</string>
+    <string name="nessuna_release">nessuna release trovata</string>
+    <string name="nuova_versione">Nuova versione disponibile</string>
+    <string name="aggiornamento_messaggio">È disponibile la versione %1$s (installata: %2$s).</string>
+    <string name="scarica_installa">Scarica e installa</string>
+    <string name="piu_tardi">Più tardi</string>
+    <string name="download_in_corso">Download in corso…</string>
+    <string name="attendere">Attendere…</string>
+    <string name="canale_aggiornamenti">Aggiornamenti app</string>
+    <string name="notifica_aggiornamento">Nuova versione %s disponibile: tocca per aggiornare</string>
+
+    <!-- Generici -->
+    <string name="errore">Errore</string>
+    <string name="errore_download">Download non riuscito: %s</string>
+    <string name="chiudi">Chiudi</string>
+    <string name="ok">OK</string>
+    <string name="salva">Salva</string>
+    <string name="indietro">Indietro</string>
+</resources>

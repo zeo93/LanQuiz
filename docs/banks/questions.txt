@@ -1,0 +1,4 @@
+Qual è la capitale d'Italia?;Roma;Milano;Torino;Napoli
+In che anno è stato rilasciato Python 1.0?;1994;1991;2000;1989
+Quale parola chiave definisce una funzione in Python?;def;func;function;lambda
+Quanto fa 10 + 10 / 2?;15;10;5;20

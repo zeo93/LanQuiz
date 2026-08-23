@@ -1,0 +1,62 @@
+plugins {
+    id 'com.android.application'
+}
+
+// La chiave di firma non è nel repo (vedi .gitignore). In locale si usa
+// app/release.keystore; in CI la si ricostruisce dai secret del repository.
+def keystorePath = System.getenv('LANQUIZ_KEYSTORE') ?: 'release.keystore'
+def keystoreFile = file(keystorePath)
+
+android {
+    namespace 'com.marco.lanquiz'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.marco.lanquiz"
+        minSdk 26
+        // targetSdk 34: evita l'edge-to-edge forzato di Android 15/16
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        resourceConfigurations += ['it']
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile keystoreFile
+                storePassword System.getenv('LANQUIZ_STORE_PASSWORD') ?: 'lanquiz'
+                keyAlias System.getenv('LANQUIZ_KEY_ALIAS') ?: 'lanquiz'
+                keyPassword System.getenv('LANQUIZ_KEY_PASSWORD') ?: 'lanquiz'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+
+    // Il lettore dei banchi e' Java puro: si prova sulla JVM, senza emulatore.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+}

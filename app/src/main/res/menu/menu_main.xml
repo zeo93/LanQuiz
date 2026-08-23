@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/menu_stats" android:title="@string/statistiche" app:showAsAction="never" />
+    <item android:id="@+id/menu_import" android:title="@string/importa" app:showAsAction="never" />
+    <item android:id="@+id/menu_format" android:title="@string/formato_titolo" app:showAsAction="never" />
+    <item android:id="@+id/menu_settings" android:title="@string/impostazioni" app:showAsAction="never" />
+</menu>
