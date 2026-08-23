@@ -10,13 +10,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** Una sessione di quiz in corso: le domande estratte e le risposte date. */
 public class Session {
 
     /** Da quali domande del banco pescare. */
-    public enum Filter { TUTTE, SBAGLIATE, CONTRASSEGNATE }
+    public enum Filter { TUTTE, DA_RIPASSARE, MAI_VISTE, CONTRASSEGNATE, ARGOMENTO }
 
     /** Impostazioni scelte in home prima di partire. */
     public static class Config {
@@ -26,6 +27,7 @@ public class Session {
         public boolean shuffleQuestions = true;
         public boolean shuffleAnswers = true;
         public Filter filter = Filter.TUTTE;
+        public String tag;         // usato solo con Filter.ARGOMENTO
 
         public static Config fromPrefs(Context c) {
             Config cfg = new Config();
@@ -126,13 +128,16 @@ public class Session {
     // ------------------------------------------------------------ creazione
 
     public static Session build(Context c, Bank bank, Config cfg) {
-        List<Question> pool = new ArrayList<>(Banks.load(c, bank));
-        if (cfg.filter == Filter.SBAGLIATE) {
-            pool = keepOnly(pool, Store.wrongIds(c, bank.id));
-        } else if (cfg.filter == Filter.CONTRASSEGNATE) {
-            pool = keepOnly(pool, Store.flagIds(c, bank.id));
-        }
-        if (cfg.shuffleQuestions) {
+        List<Question> pool = filtered(c, bank, cfg.filter, cfg.tag);
+        if (cfg.filter == Filter.DA_RIPASSARE) {
+            // il ripasso segue le scadenze: prima le domande in ritardo da più tempo
+            final Map<String, Store.Card> cards = Store.cards(c, bank.id);
+            Collections.sort(pool, (a, b) -> {
+                Store.Card ca = cards.get(a.id());
+                Store.Card cb = cards.get(b.id());
+                return Long.compare(ca == null ? 0 : ca.due, cb == null ? 0 : cb.due);
+            });
+        } else if (cfg.shuffleQuestions) {
             Collections.shuffle(pool);
         }
         if (cfg.count > 0 && cfg.count < pool.size()) {
@@ -161,10 +166,41 @@ public class Session {
         return s;
     }
 
-    private static List<Question> keepOnly(List<Question> pool, Set<String> ids) {
+    /** Le domande del banco che soddisfano il filtro scelto. */
+    public static List<Question> filtered(Context c, Bank bank, Filter filter, String tag) {
+        List<Question> pool = new ArrayList<>(Banks.load(c, bank));
+        switch (filter) {
+            case DA_RIPASSARE:
+                return keepOnly(pool, Store.dueIds(c, bank.id), true);
+            case MAI_VISTE:
+                return keepOnly(pool, Store.seenIds(c, bank.id), false);
+            case CONTRASSEGNATE:
+                return keepOnly(pool, Store.flagIds(c, bank.id), true);
+            case ARGOMENTO:
+                return withTag(c, bank, pool, tag);
+            default:
+                return pool;
+        }
+    }
+
+    private static List<Question> keepOnly(List<Question> pool, Set<String> ids, boolean dentro) {
         List<Question> out = new ArrayList<>();
         for (Question q : pool) {
-            if (ids.contains(q.id())) {
+            if (ids.contains(q.id()) == dentro) {
+                out.add(q);
+            }
+        }
+        return out;
+    }
+
+    private static List<Question> withTag(Context c, Bank bank, List<Question> pool, String tag) {
+        List<Question> out = new ArrayList<>();
+        if (tag == null || tag.isEmpty()) {
+            return out;
+        }
+        Map<String, List<String>> mine = Store.userTags(c, bank.id);
+        for (Question q : pool) {
+            if (Store.tagsOf(q, mine.get(q.id())).contains(tag)) {
                 out.add(q);
             }
         }
@@ -173,14 +209,7 @@ public class Session {
 
     /** Quante domande resterebbero applicando questo filtro. */
     public static int poolSize(Context c, Bank bank, Filter filter) {
-        List<Question> pool = Banks.load(c, bank);
-        if (filter == Filter.SBAGLIATE) {
-            return keepOnly(pool, Store.wrongIds(c, bank.id)).size();
-        }
-        if (filter == Filter.CONTRASSEGNATE) {
-            return keepOnly(pool, Store.flagIds(c, bank.id)).size();
-        }
-        return pool.size();
+        return filtered(c, bank, filter, null).size();
     }
 
     /** Una nuova sessione con le sole domande sbagliate in quella appena finita. */

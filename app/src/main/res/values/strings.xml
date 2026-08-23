@@ -27,6 +27,14 @@
     <string name="una_domanda">1 domanda</string>
     <string name="da_ripassare">%d da ripassare</string>
     <string name="contrassegnate_n">%d contrassegnate</string>
+    <string name="in_scadenza_oggi">%d da ripassare oggi</string>
+    <string name="prossimo_ripasso">Prossimo ripasso %s</string>
+    <string name="tutto_ripassato">Ripasso in pari</string>
+    <string name="mai_iniziato">Mai iniziato</string>
+    <string name="mai_viste_n">%d mai viste</string>
+    <string name="oggi">oggi</string>
+    <string name="domani">domani</string>
+    <string name="fra_giorni">fra %d giorni</string>
     <string name="record_pct">record %d%%</string>
     <string name="riprendi_titolo">Quiz interrotto</string>
     <string name="riprendi_msg">%1$s — domanda %2$d di %3$d</string>
@@ -35,8 +43,11 @@
 
     <!-- Avvio quiz -->
     <string name="tutte_le_domande">Tutte le domande (%d)</string>
-    <string name="solo_sbagliate">Solo quelle sbagliate (%d)</string>
+    <string name="solo_da_ripassare">Da ripassare oggi (%d)</string>
+    <string name="solo_mai_viste">Solo quelle mai viste (%d)</string>
     <string name="solo_contrassegnate">Solo le contrassegnate (%d)</string>
+    <string name="solo_argomento">Scegli un argomento…</string>
+    <string name="scegli_argomento">Argomento</string>
     <string name="banco_vuoto">Questo banco non contiene domande valide.</string>
     <string name="niente_da_ripassare">Non ci sono domande da ripassare in questo banco.</string>
 
@@ -76,6 +87,19 @@
     <string name="condividi_risultato">Condividi</string>
     <string name="riepilogo_condivisione">LanQuiz — %1$s: %2$d%% (%3$d/%4$d)</string>
 
+    <!-- Note e argomenti -->
+    <string name="nota">Nota</string>
+    <string name="aggiungi_nota">Aggiungi una nota</string>
+    <string name="modifica_nota">La tua nota</string>
+    <string name="nota_hint">Perché hai sbagliato? Te la ritrovi la volta dopo.</string>
+    <string name="argomenti">Argomenti</string>
+    <string name="modifica_argomenti">Argomenti della domanda</string>
+    <string name="argomenti_hint">Separati da virgola: cloud storage, iam, networking</string>
+    <string name="argomenti_del_file">Dal file: %s</string>
+    <string name="ripasso">Ripasso</string>
+    <string name="scatola_n">Scatola %1$d di %2$d · torna %3$s</string>
+    <string name="mai_affrontata">Mai affrontata</string>
+
     <!-- Statistiche -->
     <string name="statistiche">Statistiche</string>
     <string name="riepilogo_generale">Riepilogo generale</string>
@@ -90,7 +114,23 @@
     <string name="azzera_statistiche">Azzera statistiche</string>
     <string name="azzera_conferma">Cancellare storico, medie e lista delle domande da ripassare?</string>
     <string name="azzera">Azzera</string>
+    <string name="azzera_nota">Note e argomenti che hai scritto restano.</string>
     <string name="esporta_csv">Esporta in CSV</string>
+    <string name="per_argomento">Per argomento</string>
+    <string name="argomento_riga">%1$d risposte · %2$d%% esatte</string>
+    <string name="nessun_argomento">Nessun argomento ancora assegnato: aggiungine dal riepilogo di un quiz, oppure scrivili nei file con @argomento.</string>
+
+    <!-- Backup -->
+    <string name="backup">Backup e trasferimento</string>
+    <string name="backup_desc">Un solo file con quiz importati, stato del ripasso, note, argomenti e statistiche: serve a passare dal telefono alla web app e viceversa.</string>
+    <string name="esporta_backup">Esporta backup</string>
+    <string name="importa_backup">Importa backup</string>
+    <string name="backup_come">Come importarlo?</string>
+    <string name="backup_come_desc">«Unisci» tiene quello che hai già e aggiunge il resto: sul ripasso vince la versione aggiornata più di recente. «Sostituisci» butta via tutto e mette il contenuto del file.</string>
+    <string name="backup_unisci">Unisci</string>
+    <string name="backup_sostituisci">Sostituisci</string>
+    <string name="backup_fatto">Backup importato: %d quiz aggiunti.</string>
+    <string name="backup_errore">Backup non importato: %s</string>
 
     <!-- Importazione -->
     <string name="importa">Importa quiz</string>
@@ -105,7 +145,7 @@
     <string name="import_fallito">Importazione non riuscita: %s</string>
     <string name="nessuna_domanda_valida">nessuna domanda valida nel file</string>
     <string name="formato_titolo">Formato dei file</string>
-    <string name="formato_testo">Una domanda per riga, campi separati da punto e virgola:\n\ndomanda;risposta esatta;errata;errata\n\nEstensioni facoltative:\n• un asterisco davanti a una risposta la marca come corretta, così una domanda può averne più di una\n• un campo che inizia con ## è la spiegazione mostrata dopo la risposta\n• le righe che iniziano con # sono commenti\n\nSenza asterischi vale la regola di sempre: la prima risposta è quella esatta.</string>
+    <string name="formato_testo">Una domanda per riga, campi separati da punto e virgola:\n\ndomanda;risposta esatta;errata;errata\n\nEstensioni facoltative:\n• un asterisco davanti a una risposta la marca come corretta, così una domanda può averne più di una\n• un campo che inizia con ## è la spiegazione mostrata dopo la risposta\n• un campo che inizia con @ elenca gli argomenti, separati da virgola\n• le righe che iniziano con # sono commenti\n\nSenza asterischi vale la regola di sempre: la prima risposta è quella esatta.</string>
 
     <!-- Gestione banco -->
     <string name="rinomina">Rinomina</string>

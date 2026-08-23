@@ -143,6 +143,22 @@ public final class Ui {
         return String.format(Locale.ITALY, "%02d:%02d", seconds / 60, seconds % 60);
     }
 
+    /** "domani", "fra 5 giorni", oppure la data se è lontana. */
+    public static String quando(Context c, long time) {
+        long giorni = Math.max(0, (time - System.currentTimeMillis() + 60000) / (24L * 3600 * 1000));
+        if (giorni <= 0) {
+            return c.getString(R.string.oggi);
+        }
+        if (giorni == 1) {
+            return c.getString(R.string.domani);
+        }
+        if (giorni <= 14) {
+            return c.getString(R.string.fra_giorni, (int) giorni);
+        }
+        return new java.text.SimpleDateFormat("d MMM", Locale.ITALY)
+                .format(new java.util.Date(time));
+    }
+
     /** Verde se supera la soglia, arancione se ci va vicino, rosso altrimenti. */
     public static int scoreColor(Context c, int percent, int passPct) {
         if (percent >= passPct) {

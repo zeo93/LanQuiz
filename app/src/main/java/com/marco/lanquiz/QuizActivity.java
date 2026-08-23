@@ -49,6 +49,7 @@ public class QuizActivity extends AppCompatActivity {
     private MaterialCardView feedback;
     private TextView feedbackTitle;
     private TextView feedbackText;
+    private TextView feedbackNote;
     private LinearProgressIndicator progress;
     private MaterialButton btnPrev;
     private MaterialButton btnNext;
@@ -88,6 +89,7 @@ public class QuizActivity extends AppCompatActivity {
         feedback = findViewById(R.id.feedback);
         feedbackTitle = findViewById(R.id.feedback_title);
         feedbackText = findViewById(R.id.feedback_text);
+        feedbackNote = findViewById(R.id.feedback_note);
         progress = findViewById(R.id.progress);
         btnPrev = findViewById(R.id.btn_prev);
         btnNext = findViewById(R.id.btn_next);
@@ -375,17 +377,25 @@ public class QuizActivity extends AppCompatActivity {
             return;
         }
         boolean right = item.right();
+        int tinta = getColor(right ? R.color.ok : R.color.ko);
         feedback.setVisibility(View.VISIBLE);
         feedback.setCardBackgroundColor(getColor(right ? R.color.ok_bg : R.color.ko_bg));
         feedbackTitle.setText(right ? R.string.risposta_esatta : R.string.risposta_sbagliata);
-        feedbackTitle.setTextColor(getColor(right ? R.color.ok : R.color.ko));
+        feedbackTitle.setTextColor(tinta);
         if (item.question.explanation.isEmpty()) {
             feedbackText.setVisibility(View.GONE);
         } else {
             feedbackText.setVisibility(View.VISIBLE);
             feedbackText.setText(item.question.explanation);
-            feedbackText.setTextColor(getColor(right ? R.color.ok : R.color.ko));
+            feedbackText.setTextColor(tinta);
         }
+
+        // Il momento buono per annotare perché hai sbagliato è adesso.
+        String nota = Store.note(this, session.bankId, item.question.id());
+        feedbackNote.setText(nota.isEmpty() ? getString(R.string.aggiungi_nota) : nota);
+        feedbackNote.setTextColor(nota.isEmpty() ? getColor(R.color.muted) : tinta);
+        feedbackNote.setOnClickListener(v -> Dialogs.editNote(this, session.bankId,
+                item.question.id(), this::show));
     }
 
     private void paintButtons(Session.Item item, boolean revealed) {

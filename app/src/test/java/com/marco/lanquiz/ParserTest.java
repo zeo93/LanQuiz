@@ -91,6 +91,58 @@ public class ParserTest {
         assertEquals(a.id(), b.id());
     }
 
+    /**
+     * L'id è FNV-1a a 64 bit: se cambia, i backup smettono di ritrovare le
+     * domande e la web app non riconosce più quelle dell'app Android. Questi
+     * valori sono gli stessi verificati nella funzione qid() di docs/app.js.
+     */
+    @Test
+    public void idFissati_nonDevonoCambiare() {
+        assertEquals("cbf29ce484222325", Question.fnv1a64(""));
+        assertEquals("af63dc4c8601ec8c", Question.fnv1a64("a"));
+        assertEquals("929787846b913441", Question.fnv1a64("lanquiz"));
+        assertEquals("adb580c61a77591e", Question.fnv1a64("capitale d'italia?"));
+        assertEquals("adb580c61a77591e",
+                Parser.parse("  Capitale   d'Italia? ;Roma;Milano").get(0).id());
+    }
+
+    @Test
+    public void argomenti_dalCampoChiocciola() {
+        Question q = Parser.parse("Domanda?;*si;no;@Storage, IAM;@networking;##nota").get(0);
+        assertEquals(3, q.tags.size());
+        assertTrue(q.tags.contains("storage"));
+        assertTrue(q.tags.contains("iam"));
+        assertTrue(q.tags.contains("networking"));
+        assertEquals("nota", q.explanation);
+        assertEquals(2, q.answers.size());
+    }
+
+    @Test
+    public void argomenti_sopravvivonoAllEsportazione() {
+        List<Question> qs = Parser.parse("Domanda?;*si;no;@storage;##perche' si");
+        List<Question> back = Parser.parse(Parser.toText(qs));
+        assertEquals(1, back.size());
+        assertEquals(qs.get(0).tags, back.get(0).tags);
+        assertEquals("perche' si", back.get(0).explanation);
+        assertEquals(qs.get(0).id(), back.get(0).id());
+    }
+
+    @Test
+    public void argomentiRipuliti() {
+        assertEquals("cloud-storage", Parser.normalizeTag("  Cloud Storage "));
+        assertEquals("c++", Parser.normalizeTag("C++"));
+        assertEquals("", Parser.normalizeTag("---"));
+    }
+
+    /** Solo la virgola separa: un argomento può essere di due parole. */
+    @Test
+    public void argomentoDiDueParole() {
+        Question q = Parser.parse("Domanda?;si;no;@Cloud Storage, IAM").get(0);
+        assertEquals(2, q.tags.size());
+        assertEquals("cloud-storage", q.tags.get(0));
+        assertEquals("iam", q.tags.get(1));
+    }
+
     @Test
     public void bancheReali_tutteLeRigheSonoDomandeValide() throws Exception {
         File dir = new File("src/main/assets/banks");

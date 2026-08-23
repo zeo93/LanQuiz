@@ -119,6 +119,19 @@
                         android:layout_marginTop="4dp"
                         android:textSize="14sp"
                         android:visibility="gone" />
+
+                    <!-- La nota è scritta da te: si tocca per aggiungerla o
+                         cambiarla senza uscire dalla domanda. -->
+                    <TextView
+                        android:id="@+id/feedback_note"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:textSize="14sp"
+                        android:textStyle="italic" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

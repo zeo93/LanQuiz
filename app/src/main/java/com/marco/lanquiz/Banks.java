@@ -95,6 +95,9 @@ public final class Banks {
     public static List<Question> load(Context c, Bank bank) {
         if (bank.questions == null) {
             bank.questions = Parser.parse(read(c, bank));
+            // gli id delle domande sono cambiati nella 1.1: qui si recuperano
+            // ripasso e segnalibri salvati con quelli vecchi
+            Store.migrateBank(c, bank.id, bank.questions);
         }
         return bank.questions;
     }

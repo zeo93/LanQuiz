@@ -5,6 +5,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Lettore dei banchi di domande.
@@ -20,6 +21,9 @@ import java.util.List;
  *       davvero con un asterisco si scrive <code>\*</code>.</li>
  *   <li>un campo che inizia con <code>##</code> è la spiegazione della domanda,
  *       mostrata dopo la risposta.</li>
+ *   <li>un campo che inizia con <code>@</code> elenca gli argomenti della
+ *       domanda, separati da spazi o virgole: servono alle statistiche per
+ *       tema e a ripassare un argomento alla volta.</li>
  *   <li>le righe che iniziano con <code>#</code> sono commenti.</li>
  *   <li>separatore: punto e virgola; in mancanza si prova tabulazione e virgola,
  *       così anche i CSV esportati da un foglio di calcolo funzionano.</li>
@@ -72,6 +76,7 @@ public final class Parser {
         }
         List<String> answers = new ArrayList<>();
         List<Integer> correct = new ArrayList<>();
+        List<String> tags = new ArrayList<>();
         String explanation = "";
         for (int i = 1; i < parts.length; i++) {
             String f = parts[i].trim();
@@ -80,6 +85,16 @@ public final class Parser {
             }
             if (f.startsWith("##")) {
                 explanation = f.substring(2).trim();
+                continue;
+            }
+            if (f.startsWith("@")) {
+                // solo la virgola separa: così "cloud storage" resta un argomento solo
+                for (String raw : f.substring(1).split("[,;@]+")) {
+                    String tag = normalizeTag(raw);
+                    if (!tag.isEmpty() && !tags.contains(tag)) {
+                        tags.add(tag);
+                    }
+                }
                 continue;
             }
             boolean isCorrect = false;
@@ -103,7 +118,17 @@ public final class Parser {
         if (correct.isEmpty()) {
             correct.add(0); // regola storica: la prima risposta è quella esatta
         }
-        return new Question(text, answers, correct, explanation);
+        return new Question(text, answers, correct, explanation, tags);
+    }
+
+    /** Gli argomenti si confrontano sempre in minuscolo e senza spazi. */
+    public static String normalizeTag(String tag) {
+        if (tag == null) {
+            return "";
+        }
+        return tag.trim().toLowerCase(Locale.ROOT)
+                .replaceAll("[^\\p{L}\\p{N}+#._-]+", "-")
+                .replaceAll("(^-+|-+$)", "");
     }
 
     private static List<Question> parseJson(String content) {
@@ -143,6 +168,9 @@ public final class Parser {
                     sb.append('\\');
                 }
                 sb.append(a);
+            }
+            for (String tag : q.tags) {
+                sb.append(";@").append(tag);
             }
             if (!q.explanation.isEmpty()) {
                 sb.append(";##").append(q.explanation.replace(";", ","));

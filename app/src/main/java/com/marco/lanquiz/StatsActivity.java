@@ -23,6 +23,7 @@ import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,7 +107,7 @@ public class StatsActivity extends AppCompatActivity {
                 best = Math.max(best, r.percent());
             }
             int avg = sumPct / list.size();
-            int wrong = Store.wrongIds(this, e.getKey()).size();
+            int wrong = Store.dueIds(this, e.getKey()).size();
 
             LinearLayout card = Ui.card(this, box);
             Ui.text(this, card, list.get(0).title, 16, getColor(R.color.on_surface), true);
@@ -125,10 +126,18 @@ public class StatsActivity extends AppCompatActivity {
             card.addView(bar, lp);
 
             if (wrong > 0) {
-                Ui.text(this, card, getString(R.string.da_ripassare, wrong), 13,
+                Ui.text(this, card, getString(R.string.in_scadenza_oggi, wrong), 13,
                         getColor(R.color.warn), false);
             }
         }
+
+        // --- per argomento --------------------------------------------------
+        // Riempito dopo: leggere tutti i banchi costa, e non deve bloccare lo scorrimento.
+        LinearLayout perTag = new LinearLayout(this);
+        perTag.setOrientation(LinearLayout.VERTICAL);
+        box.addView(perTag, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        loadTagStats(perTag, pass);
 
         // --- ultimi tentativi ----------------------------------------------
         Ui.sectionTitle(this, box, getString(R.string.ultimi_tentativi));
@@ -186,7 +195,8 @@ public class StatsActivity extends AppCompatActivity {
         rlp.bottomMargin = Ui.dp(this, 24);
         reset.setLayoutParams(rlp);
         reset.setOnClickListener(v -> new MaterialAlertDialogBuilder(this)
-                .setMessage(R.string.azzera_conferma)
+                .setMessage(getString(R.string.azzera_conferma)
+                        + "\n\n" + getString(R.string.azzera_nota))
                 .setPositiveButton(R.string.azzera, (d, w) -> {
                     Store.clearHistory(this);
                     render();
@@ -194,6 +204,75 @@ public class StatsActivity extends AppCompatActivity {
                 .setNegativeButton(R.string.annulla, null)
                 .show());
         box.addView(reset);
+    }
+
+    /** Quante risposte hai dato per ogni argomento e quante ne hai azzeccate. */
+    private static class TagStat {
+        int ok;
+        int ko;
+
+        int total() {
+            return ok + ko;
+        }
+
+        int percent() {
+            return total() > 0 ? Math.round(ok * 100f / total()) : 0;
+        }
+    }
+
+    private void loadTagStats(LinearLayout target, int pass) {
+        new Thread(() -> {
+            Map<String, TagStat> perTag = new LinkedHashMap<>();
+            for (Bank bank : Banks.all(this)) {
+                Map<String, Store.Card> cards = Store.cards(this, bank.id);
+                if (cards.isEmpty()) {
+                    continue;
+                }
+                Map<String, List<String>> mine = Store.userTags(this, bank.id);
+                for (Question q : Banks.load(this, bank)) {
+                    Store.Card card = cards.get(q.id());
+                    if (card == null) {
+                        continue;
+                    }
+                    for (String tag : Store.tagsOf(q, mine.get(q.id()))) {
+                        TagStat stat = perTag.get(tag);
+                        if (stat == null) {
+                            stat = new TagStat();
+                            perTag.put(tag, stat);
+                        }
+                        stat.ok += card.ok;
+                        stat.ko += card.ko;
+                    }
+                }
+            }
+            List<Map.Entry<String, TagStat>> sorted = new ArrayList<>(perTag.entrySet());
+            // prima quelli che vanno peggio: sono quelli da ripassare
+            Collections.sort(sorted, (a, b) ->
+                    Integer.compare(a.getValue().percent(), b.getValue().percent()));
+            runOnUiThread(() -> paintTagStats(target, sorted, pass));
+        }).start();
+    }
+
+    private void paintTagStats(LinearLayout target,
+                               List<Map.Entry<String, TagStat>> sorted, int pass) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        target.removeAllViews();
+        Ui.sectionTitle(this, target, getString(R.string.per_argomento));
+        if (sorted.isEmpty()) {
+            LinearLayout card = Ui.card(this, target);
+            Ui.text(this, card, getString(R.string.nessun_argomento), 14,
+                    getColor(R.color.muted), false);
+            return;
+        }
+        LinearLayout card = Ui.card(this, target);
+        for (Map.Entry<String, TagStat> e : sorted) {
+            TagStat stat = e.getValue();
+            Ui.row(this, card, "#" + e.getKey(),
+                    getString(R.string.argomento_riga, stat.total(), stat.percent()),
+                    Ui.scoreColor(this, stat.percent(), pass));
+        }
     }
 
     private void exportCsv(List<Store.Result> history) {

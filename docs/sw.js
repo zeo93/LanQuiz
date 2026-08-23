@@ -1,7 +1,7 @@
 /* Service worker: rete prima, cache come riserva.
    Ogni apertura con rete scarica l'ultima versione pubblicata; senza rete
    l'app e i banchi già visti restano disponibili. */
-const CACHE = "lanquiz-v1";
+const CACHE = "lanquiz-v2";
 const CORE = [
   "./", "index.html", "style.css", "app.js", "manifest.webmanifest",
   "banks.json", "icons/icon-192.png", "icons/icon-512.png",

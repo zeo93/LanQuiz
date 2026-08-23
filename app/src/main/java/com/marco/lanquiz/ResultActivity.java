@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Esito del quiz e ripasso domanda per domanda. */
 public class ResultActivity extends AppCompatActivity {
@@ -199,5 +203,37 @@ public class ResultActivity extends AppCompatActivity {
             explanation.setVisibility(View.VISIBLE);
             explanation.setText(getString(R.string.spiegazione) + ": " + item.question.explanation);
         }
+
+        TextView note = v.findViewById(R.id.note);
+        String testo = Store.note(this, session.bankId, item.question.id());
+        note.setVisibility(testo.isEmpty() ? View.GONE : View.VISIBLE);
+        note.setText(testo);
+        note.setTextColor(getColor(R.color.on_surface));
+
+        TextView tagsView = v.findViewById(R.id.tags);
+        List<String> tags = Store.tagsOf(item.question,
+                Store.userTags(this, session.bankId).get(item.question.id()));
+        tagsView.setVisibility(tags.isEmpty() ? View.GONE : View.VISIBLE);
+        tagsView.setText(TextUtils.join("  ", prefixed(tags)));
+
+        // Quando tornerà questa domanda: è il riscontro della ripetizione spaziata.
+        TextView box = v.findViewById(R.id.box);
+        Store.Card card = Store.cards(this, session.bankId).get(item.question.id());
+        box.setText(card == null ? getString(R.string.mai_affrontata)
+                : getString(R.string.scatola_n, card.box, Store.SCATOLA_MAX,
+                Ui.quando(this, card.due)));
+
+        v.findViewById(R.id.btn_note).setOnClickListener(x -> Dialogs.editNote(this,
+                session.bankId, item.question.id(), () -> bindReview(v, index)));
+        v.findViewById(R.id.btn_tags).setOnClickListener(x -> Dialogs.editTags(this,
+                session.bankId, item.question, () -> bindReview(v, index)));
+    }
+
+    private static List<String> prefixed(List<String> tags) {
+        List<String> out = new ArrayList<>();
+        for (String t : tags) {
+            out.add("#" + t);
+        }
+        return out;
     }
 }

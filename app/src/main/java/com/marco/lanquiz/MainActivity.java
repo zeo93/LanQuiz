@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -49,8 +50,11 @@ public class MainActivity extends AppCompatActivity {
     private static class Row {
         Bank bank;
         int best = -1;
-        int wrong;
+        int due;        // domande in scadenza oggi
+        int unseen;     // domande mai affrontate
         int flags;
+        long nextDue;   // quando torna la prossima, se oggi non c'è nulla
+        final List<String> tags = new ArrayList<>();
     }
 
     private LinearLayout banksBox;
@@ -291,10 +295,25 @@ public class MainActivity extends AppCompatActivity {
             for (Bank b : Banks.all(this)) {
                 Row r = new Row();
                 r.bank = b;
-                r.wrong = Store.wrongIds(this, b.id).size();
                 r.flags = Store.flagIds(this, b.id).size();
+                r.due = Session.poolSize(this, b, Session.Filter.DA_RIPASSARE);
+                r.unseen = Session.poolSize(this, b, Session.Filter.MAI_VISTE);
                 for (Store.Result res : Store.historyFor(this, b.id)) {
                     r.best = Math.max(r.best, res.percent());
+                }
+                List<String> ids = new ArrayList<>();
+                Map<String, List<String>> mine = Store.userTags(this, b.id);
+                for (Question q : Banks.load(this, b)) {
+                    ids.add(q.id());
+                    for (String tag : Store.tagsOf(q, mine.get(q.id()))) {
+                        if (!r.tags.contains(tag)) {
+                            r.tags.add(tag);
+                        }
+                    }
+                }
+                Collections.sort(r.tags);
+                if (r.due == 0) {
+                    r.nextDue = Store.nextDue(this, b.id, ids);
                 }
                 fresh.add(r);
             }
@@ -424,9 +443,6 @@ public class MainActivity extends AppCompatActivity {
         if (row.best >= 0) {
             bits.add(getString(R.string.record_pct, row.best));
         }
-        if (row.wrong > 0) {
-            bits.add(getString(R.string.da_ripassare, row.wrong));
-        }
         if (row.flags > 0) {
             bits.add(getString(R.string.contrassegnate_n, row.flags));
         }
@@ -435,6 +451,31 @@ public class MainActivity extends AppCompatActivity {
         sub.setTextSize(13);
         sub.setTextColor(getColor(R.color.muted));
         col.addView(sub);
+
+        // Lo stato del ripasso è la cosa che guardi per prima: sta su una riga sua.
+        String ripasso;
+        int colore;
+        if (row.due > 0) {
+            ripasso = getString(R.string.in_scadenza_oggi, row.due);
+            colore = getColor(R.color.warn);
+        } else if (row.unseen == row.bank.count) {
+            ripasso = getString(R.string.mai_iniziato);
+            colore = getColor(R.color.muted);
+        } else if (row.nextDue > 0) {
+            ripasso = getString(R.string.prossimo_ripasso, Ui.quando(this, row.nextDue));
+            colore = getColor(R.color.ok);
+        } else {
+            ripasso = getString(R.string.tutto_ripassato);
+            colore = getColor(R.color.ok);
+        }
+        if (row.unseen > 0 && row.unseen < row.bank.count) {
+            ripasso += " · " + getString(R.string.mai_viste_n, row.unseen);
+        }
+        TextView stato = new TextView(this);
+        stato.setText(ripasso);
+        stato.setTextSize(13);
+        stato.setTextColor(colore);
+        col.addView(stato);
 
         line.addView(card);
     }
@@ -446,33 +487,58 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.banco_vuoto, Toast.LENGTH_SHORT).show();
             return;
         }
-        if (row.wrong == 0 && row.flags == 0) {
-            start(row.bank, Session.Filter.TUTTE);
+        if (row.due == 0 && row.flags == 0 && row.tags.isEmpty()
+                && (row.unseen == 0 || row.unseen == row.bank.count)) {
+            start(row.bank, Session.Filter.TUTTE, null);
             return;
         }
         List<String> labels = new ArrayList<>();
         List<Session.Filter> filters = new ArrayList<>();
         labels.add(getString(R.string.tutte_le_domande, row.bank.count));
         filters.add(Session.Filter.TUTTE);
-        if (row.wrong > 0) {
-            labels.add(getString(R.string.solo_sbagliate, row.wrong));
-            filters.add(Session.Filter.SBAGLIATE);
+        if (row.due > 0) {
+            labels.add(getString(R.string.solo_da_ripassare, row.due));
+            filters.add(Session.Filter.DA_RIPASSARE);
+        }
+        if (row.unseen > 0 && row.unseen < row.bank.count) {
+            labels.add(getString(R.string.solo_mai_viste, row.unseen));
+            filters.add(Session.Filter.MAI_VISTE);
         }
         if (row.flags > 0) {
             labels.add(getString(R.string.solo_contrassegnate, row.flags));
             filters.add(Session.Filter.CONTRASSEGNATE);
         }
+        if (!row.tags.isEmpty()) {
+            labels.add(getString(R.string.solo_argomento));
+            filters.add(Session.Filter.ARGOMENTO);
+        }
         new MaterialAlertDialogBuilder(this)
                 .setTitle(row.bank.title)
-                .setItems(labels.toArray(new String[0]),
-                        (d, which) -> start(row.bank, filters.get(which)))
+                .setItems(labels.toArray(new String[0]), (d, which) -> {
+                    if (filters.get(which) == Session.Filter.ARGOMENTO) {
+                        chooseTag(row);
+                    } else {
+                        start(row.bank, filters.get(which), null);
+                    }
+                })
                 .setNegativeButton(R.string.annulla, null)
                 .show();
     }
 
-    private void start(Bank bank, Session.Filter filter) {
+    private void chooseTag(Row row) {
+        String[] tags = row.tags.toArray(new String[0]);
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.scegli_argomento)
+                .setItems(tags, (d, which) ->
+                        start(row.bank, Session.Filter.ARGOMENTO, tags[which]))
+                .setNegativeButton(R.string.annulla, null)
+                .show();
+    }
+
+    private void start(Bank bank, Session.Filter filter, String tag) {
         Session.Config cfg = Session.Config.fromPrefs(this);
         cfg.filter = filter;
+        cfg.tag = tag;
         Session session = Session.build(this, bank, cfg);
         if (session.items.isEmpty()) {
             Toast.makeText(this, R.string.niente_da_ripassare, Toast.LENGTH_SHORT).show();

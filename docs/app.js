@@ -1,9 +1,12 @@
 /* LanQuiz web — la stessa app Android in versione PWA.
    Tutto gira nel browser: i banchi preinstallati arrivano da banks/, quelli
-   importati e i risultati stanno in localStorage. Nessun server. */
+   importati e i risultati stanno in localStorage. Nessun server.
+
+   Il formato dei quiz, il calcolo dell'id delle domande e il file di backup
+   sono identici a quelli dell'app Android: un backup si travasa nei due sensi. */
 "use strict";
 
-const VERSION = "1.0";
+const VERSION = "1.1";
 const REPO = "zeo93/LanQuiz";
 const STORE_KEY = "lanquiz";
 
@@ -21,13 +24,14 @@ const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+const GIORNO = 24 * 60 * 60 * 1000;
+
 function clock(seconds) {
   const s = Math.max(0, Math.round(seconds));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  const r = s % 60;
   const pad = (n) => String(n).padStart(2, "0");
-  return h > 0 ? `${h}:${pad(m)}:${pad(r)}` : `${pad(m)}:${pad(r)}`;
+  return h > 0 ? `${h}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`;
 }
 
 function duration(seconds) {
@@ -42,6 +46,15 @@ function duration(seconds) {
 function whenText(ts) {
   return new Date(ts).toLocaleString("it-IT",
     { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/** "oggi", "domani", "fra 5 giorni", oppure la data se è lontana. */
+function whenShort(ts) {
+  const giorni = Math.max(0, Math.round((ts - Date.now()) / GIORNO));
+  if (giorni <= 0) return "oggi";
+  if (giorni === 1) return "domani";
+  if (giorni <= 14) return `fra ${giorni} giorni`;
+  return new Date(ts).toLocaleDateString("it-IT", { day: "numeric", month: "short" });
 }
 
 function shuffle(list) {
@@ -71,6 +84,22 @@ const DEFAULTS = {
   passPct: 70, theme: "sistema", autoNext: true,
 };
 
+function emptyStore() {
+  return {
+    settings: Object.assign({}, DEFAULTS),
+    history: [],
+    srs: {},      // banco -> domanda -> {box, due, last, ok, ko}
+    flags: {},    // banco -> [domanda]
+    notes: {},    // banco -> domanda -> testo
+    tags: {},     // banco -> domanda -> [argomenti]
+    hidden: [],
+    resume: null,
+    user: {},     // banco importato -> contenuto del file
+    migrated: {}, // banchi già convertiti dagli id della 1.0
+    wrong: {},    // resto della 1.0, letto solo dalla conversione
+  };
+}
+
 function loadStore() {
   let data = {};
   try {
@@ -78,15 +107,19 @@ function loadStore() {
   } catch (e) {
     data = {};
   }
-  return {
-    settings: Object.assign({}, DEFAULTS, data.settings || {}),
-    history: data.history || [],
-    wrong: data.wrong || {},
-    flags: data.flags || {},
-    hidden: data.hidden || [],
-    resume: data.resume || null,
-    user: data.user || {},
-  };
+  const s = emptyStore();
+  s.settings = Object.assign({}, DEFAULTS, data.settings || {});
+  s.history = data.history || [];
+  s.srs = data.srs || {};
+  s.flags = data.flags || {};
+  s.notes = data.notes || {};
+  s.tags = data.tags || {};
+  s.hidden = data.hidden || [];
+  s.resume = data.resume || null;
+  s.user = data.user || {};
+  s.migrated = data.migrated || {};
+  s.wrong = data.wrong || {};
+  return s;
 }
 
 let store = loadStore();
@@ -116,10 +149,29 @@ function applyTheme() {
 
 /* Stesse regole del lettore Android (Parser.java):
    domanda;risposta esatta;errata;…  ·  * marca una corretta  ·  ## spiegazione
-   · # commento  ·  separatore ; poi tab poi virgola  ·  JSON per l'export. */
+   ·  @argomento  ·  # commento  ·  separatore ; poi tab poi virgola  ·  JSON. */
 
-function qid(text) {
-  const norm = text.trim().replace(/\s+/g, " ").toLowerCase();
+const FNV_OFFSET = 0xcbf29ce484222325n;
+const FNV_PRIME = 0x100000001b3n;
+const MASK64 = 0xffffffffffffffffn;
+const utf8 = new TextEncoder();
+
+/** FNV-1a a 64 bit: identico a Question.fnv1a64 in Java, byte per byte. */
+function fnv1a64(s) {
+  let h = FNV_OFFSET;
+  for (const b of utf8.encode(s)) {
+    h = ((h ^ BigInt(b)) * FNV_PRIME) & MASK64;
+  }
+  return h.toString(16).padStart(16, "0");
+}
+
+const normalizeText = (text) => text.trim().replace(/\s+/g, " ").toLowerCase();
+
+const qid = (text) => fnv1a64(normalizeText(text));
+
+/** L'id usato fino alla 1.0: serve solo a recuperare i dati già salvati. */
+function qidLegacy(text) {
+  const norm = normalizeText(text);
   let h1 = 0x811c9dc5;
   let h2 = 0x01000193;
   for (let i = 0; i < norm.length; i++) {
@@ -129,11 +181,19 @@ function qid(text) {
   return h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
 }
 
-function makeQuestion(text, answers, correct, explanation) {
+function normalizeTag(tag) {
+  return String(tag || "").trim().toLowerCase()
+    .replace(/[^\p{L}\p{N}+#._-]+/gu, "-")
+    .replace(/(^-+|-+$)/g, "");
+}
+
+function makeQuestion(text, answers, correct, explanation, tags) {
   return {
     text, answers, correct,
     explanation: explanation || "",
+    tags: tags || [],
     id: qid(text),
+    legacy: qidLegacy(text),
     multi: correct.length > 1,
   };
 }
@@ -147,12 +207,21 @@ function parseLine(line) {
 
   const answers = [];
   const correct = [];
+  const tags = [];
   let explanation = "";
   for (let i = 1; i < parts.length; i++) {
     let f = parts[i].trim();
     if (!f) continue;
     if (f.startsWith("##")) {
       explanation = f.slice(2).trim();
+      continue;
+    }
+    if (f.startsWith("@")) {
+      // solo la virgola separa: cosi "cloud storage" resta un argomento solo
+      for (const raw of f.slice(1).split(/[,;@]+/)) {
+        const tag = normalizeTag(raw);
+        if (tag && !tags.includes(tag)) tags.push(tag);
+      }
       continue;
     }
     let isCorrect = false;
@@ -168,7 +237,7 @@ function parseLine(line) {
   }
   if (answers.length < 2) return null;
   if (correct.length === 0) correct.push(0);
-  return makeQuestion(text, answers, correct, explanation);
+  return makeQuestion(text, answers, correct, explanation, tags);
 }
 
 function parseBank(content) {
@@ -199,7 +268,8 @@ function parseJsonBank(content) {
         const answers = o.a || o.answers || [];
         let correct = o.correct || [];
         if (!correct.length && answers.length) correct = [0];
-        return makeQuestion(o.q || o.text || "", answers, correct, o.explanation);
+        return makeQuestion(o.q || o.text || "", answers, correct, o.explanation,
+          (o.tags || []).map(normalizeTag).filter(Boolean));
       })
       .filter((q) => q.text.trim() && q.answers.length >= 2);
   } catch (e) {
@@ -212,13 +282,8 @@ function parseJsonBank(content) {
 const cache = new Map();   // id -> domande già lette
 let bundledIds = [];
 
-function stemOf(id) {
-  return id.replace(/\.[A-Za-z0-9]+$/, "");
-}
-
-function titleOf(id) {
-  return stemOf(id).replace(/_/g, " ").trim();
-}
+const stemOf = (id) => id.replace(/\.[A-Za-z0-9]+$/, "");
+const titleOf = (id) => stemOf(id).replace(/_/g, " ").trim();
 
 /* Stessa regola di Bank.categoryOf: si tolgono i suffissi di numerazione. */
 function categoryOf(id) {
@@ -240,8 +305,39 @@ async function bankText(id) {
 }
 
 async function bankQuestions(id) {
-  if (!cache.has(id)) cache.set(id, parseBank(await bankText(id)));
+  if (!cache.has(id)) {
+    const questions = parseBank(await bankText(id));
+    migrateBank(id, questions);
+    cache.set(id, questions);
+  }
   return cache.get(id);
+}
+
+/**
+ * Porta i dati della 1.0 nel nuovo formato: gli id delle domande sono cambiati
+ * (ora coincidono con quelli dell'app Android), quindi si ripassa dal testo.
+ */
+function migrateBank(bankId, questions) {
+  if (store.migrated[bankId]) return;
+  const mappa = new Map(questions.map((q) => [q.legacy, q.id]));
+
+  const vecchieSbagliate = store.wrong[bankId] || [];
+  if (vecchieSbagliate.length) {
+    const cards = store.srs[bankId] || (store.srs[bankId] = {});
+    const adesso = Date.now();
+    for (const vecchio of vecchieSbagliate) {
+      const nuovo = mappa.get(vecchio);
+      if (nuovo && !cards[nuovo]) {
+        cards[nuovo] = { box: 0, due: adesso, last: adesso, ok: 0, ko: 1 };
+      }
+    }
+  }
+  if (store.flags[bankId]) {
+    store.flags[bankId] = store.flags[bankId].map((v) => mappa.get(v) || v);
+  }
+  delete store.wrong[bankId];
+  store.migrated[bankId] = true;
+  save();
 }
 
 async function allBanks() {
@@ -255,7 +351,22 @@ async function allBanks() {
     } catch (e) {
       continue; // banco non raggiungibile (offline e mai aperto): lo si salta
     }
+    // l'ora si legge dopo bankQuestions: la conversione dalla 1.0 scrive
+    // scadenze a "adesso", e leggendola prima risulterebbero tutte future
+    const adesso = Date.now();
     const attempts = store.history.filter((h) => h.bank === id);
+    const cards = store.srs[id] || {};
+    const tags = new Set();
+    let due = 0;
+    let unseen = 0;
+    let nextDue = 0;
+    for (const q of questions) {
+      for (const t of tagsOf(id, q)) tags.add(t);
+      const card = cards[q.id];
+      if (!card) unseen++;
+      else if (card.due <= adesso) due++;
+      else if (!nextDue || card.due < nextDue) nextDue = card.due;
+    }
     banks.push({
       id,
       title: titleOf(id),
@@ -263,8 +374,11 @@ async function allBanks() {
       bundled: store.user[id] === undefined,
       count: questions.length,
       best: attempts.length ? Math.max(...attempts.map((h) => pct(h))) : -1,
-      wrong: setOf(store.wrong, id).size,
+      due,
+      unseen,
+      nextDue: due ? 0 : nextDue,
       flags: setOf(store.flags, id).size,
+      tags: Array.from(tags).sort(),
     });
   }
   banks.sort((a, b) => a.category.localeCompare(b.category, "it")
@@ -297,33 +411,117 @@ function saveUserBank(name, content) {
     n++;
   }
   store.user[unique] = content;
+  store.migrated[unique] = true;
   cache.delete(unique);
   save();
   return unique;
 }
 
 function forgetBank(id) {
-  delete store.wrong[id];
-  delete store.flags[id];
+  for (const map of [store.srs, store.flags, store.notes, store.tags, store.migrated]) {
+    delete map[id];
+  }
   store.history = store.history.filter((h) => h.bank !== id);
   if (store.resume && store.resume.bankId === id) store.resume = null;
 }
 
-// --------------------------------------------------------------- sessione
+// --------------------------------------------------------- note e argomenti
+
+const noteOf = (bankId, id) => (store.notes[bankId] || {})[id] || "";
+
+function setNote(bankId, id, text) {
+  const map = store.notes[bankId] || (store.notes[bankId] = {});
+  if (text && text.trim()) map[id] = text.trim();
+  else delete map[id];
+  if (!Object.keys(map).length) delete store.notes[bankId];
+  save();
+}
+
+const userTagsOf = (bankId, id) => (store.tags[bankId] || {})[id] || [];
+
+function setUserTags(bankId, id, tags) {
+  const map = store.tags[bankId] || (store.tags[bankId] = {});
+  if (tags && tags.length) map[id] = tags;
+  else delete map[id];
+  if (!Object.keys(map).length) delete store.tags[bankId];
+  save();
+}
+
+/** Gli argomenti che valgono per una domanda: quelli del file più i tuoi. */
+function tagsOf(bankId, q) {
+  const out = q.tags.slice();
+  for (const t of userTagsOf(bankId, q.id)) {
+    if (!out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+function parseTagInput(raw) {
+  const out = [];
+  for (const piece of String(raw || "").split(/[,;@]+/)) {
+    const tag = normalizeTag(piece);
+    if (tag && !out.includes(tag)) out.push(tag);
+  }
+  return out;
+}
+
+// -------------------------------------------------------- ripasso (Leitner)
+
+/* Quanti giorni prima che una domanda torni a farsi vedere: chi sbaglia
+   ricomincia dalla scatola 0, chi risponde bene sale e sparisce più a lungo. */
+const GIORNI_PER_SCATOLA = [0, 1, 3, 7, 16, 35];
+const SCATOLA_MAX = GIORNI_PER_SCATOLA.length - 1;
+
+const cardOf = (bankId, id) => (store.srs[bankId] || {})[id];
+
+function grade(bankId, items) {
+  const adesso = Date.now();
+  const cards = store.srs[bankId] || (store.srs[bankId] = {});
+  for (const it of items) {
+    const card = cards[it.q.id]
+      || (cards[it.q.id] = { box: 0, due: 0, last: 0, ok: 0, ko: 0 });
+    if (itemRight(it)) {
+      card.box = Math.min(SCATOLA_MAX, card.box + 1);
+      card.ok++;
+      card.due = adesso + GIORNI_PER_SCATOLA[card.box] * GIORNO;
+    } else {
+      card.box = 0;
+      card.ko++;
+      card.due = adesso;
+    }
+    card.last = adesso;
+  }
+}
+
+// ---------------------------------------------------------------- sessione
 
 const pct = (r) => (r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0);
 
-function buildSession(bank, questions, filter) {
-  const s = store.settings;
-  let pool = questions.slice();
-  if (filter === "sbagliate") {
-    const ids = setOf(store.wrong, bank.id);
-    pool = pool.filter((q) => ids.has(q.id));
-  } else if (filter === "contrassegnate") {
-    const ids = setOf(store.flags, bank.id);
-    pool = pool.filter((q) => ids.has(q.id));
+function filterQuestions(bankId, questions, filter, tag) {
+  const cards = store.srs[bankId] || {};
+  const adesso = Date.now();
+  switch (filter) {
+    case "ripasso":
+      return questions.filter((q) => cards[q.id] && cards[q.id].due <= adesso)
+        .sort((a, b) => cards[a.id].due - cards[b.id].due);
+    case "nuove":
+      return questions.filter((q) => !cards[q.id]);
+    case "contrassegnate": {
+      const ids = setOf(store.flags, bankId);
+      return questions.filter((q) => ids.has(q.id));
+    }
+    case "argomento":
+      return questions.filter((q) => tagsOf(bankId, q).includes(tag));
+    default:
+      return questions.slice();
   }
-  if (s.shuffleQ) shuffle(pool);
+}
+
+function buildSession(bank, questions, filter, tag) {
+  const s = store.settings;
+  let pool = filterQuestions(bank.id, questions, filter, tag);
+  // il ripasso segue le scadenze: rimescolarlo vanificherebbe l'ordine
+  if (s.shuffleQ && filter !== "ripasso") shuffle(pool);
   if (s.count > 0 && s.count < pool.length) pool = pool.slice(0, s.count);
 
   const flagged = setOf(store.flags, bank.id);
@@ -357,7 +555,8 @@ function itemRight(it) {
 
 const answeredCount = (s) => s.items.filter(itemAnswered).length;
 const correctCount = (s) => s.items.filter(itemRight).length;
-const sessionPct = (s) => (s.items.length ? Math.round((correctCount(s) / s.items.length) * 100) : 0);
+const sessionPct = (s) =>
+  (s.items.length ? Math.round((correctCount(s) / s.items.length) * 100) : 0);
 
 function recordResult(s) {
   store.history.push({
@@ -365,13 +564,7 @@ function recordResult(s) {
     correct: correctCount(s), total: s.items.length, mode: s.mode, seconds: s.elapsed,
   });
   while (store.history.length > 500) store.history.shift();
-
-  const wrong = setOf(store.wrong, s.bankId);
-  for (const it of s.items) {
-    if (itemRight(it)) wrong.delete(it.q.id);
-    else wrong.add(it.q.id);
-  }
-  writeSet(store.wrong, s.bankId, wrong);
+  grade(s.bankId, s.items);
   store.resume = null;
   save();
 }
@@ -397,9 +590,7 @@ function go(route, push) {
   render();
 }
 
-function back() {
-  history.back();
-}
+const back = () => history.back();
 
 btnBack.addEventListener("click", back);
 
@@ -415,7 +606,7 @@ window.addEventListener("pagehide", parkSession);
 
 window.addEventListener("popstate", (e) => {
   stopTicker();
-  parkSession();               // uscire dal quiz lo rende riprendibile
+  parkSession();
   current = e.state || { name: "home" };
   render();
 });
@@ -534,7 +725,7 @@ async function renderHome() {
   $("#sq").onchange = (e) => { store.settings.shuffleQ = e.target.checked; save(); };
   $("#sa").onchange = (e) => { store.settings.shuffleA = e.target.checked; save(); };
 
-  $$(".chip").forEach((c) => {
+  $$(".chip", view).forEach((c) => {
     c.onclick = () => onSettingChip(c.dataset.group, c.dataset.value);
   });
 
@@ -592,14 +783,32 @@ async function paintBanks() {
     for (const b of list) {
       const bits = [b.count === 1 ? "1 domanda" : `${b.count} domande`];
       if (b.best >= 0) bits.push(`record ${b.best}%`);
-      if (b.wrong) bits.push(`${b.wrong} da ripassare`);
       if (b.flags) bits.push(`${b.flags} contrassegnate`);
+
+      let stato;
+      let colore;
+      if (b.due) {
+        stato = `${b.due} da ripassare oggi`;
+        colore = "var(--warn)";
+      } else if (b.unseen === b.count) {
+        stato = "Mai iniziato";
+        colore = "var(--muted)";
+      } else if (b.nextDue) {
+        stato = `Prossimo ripasso ${whenShort(b.nextDue)}`;
+        colore = "var(--ok)";
+      } else {
+        stato = "Ripasso in pari";
+        colore = "var(--ok)";
+      }
+      if (b.unseen && b.unseen < b.count) stato += ` · ${b.unseen} mai viste`;
+
       html += `
         <div class="card bank tap" data-bank="${esc(b.id)}">
           <div class="spread">
             <div>
               <div class="title">${esc(b.title)}</div>
               <div class="small">${esc(bits.join(" · "))}</div>
+              <div class="small" style="color:${colore}">${esc(stato)}</div>
             </div>
             <button class="icon-btn" data-menu="${esc(b.id)}" title="Opzioni">&#8942;</button>
           </div>
@@ -623,29 +832,49 @@ async function paintBanks() {
   });
 }
 
-async function startFromBank(bank) {
+function startFromBank(bank) {
   if (!bank || !bank.count) {
     toast("Questo banco non contiene domande valide.");
     return;
   }
-  if (!bank.wrong && !bank.flags) {
-    return startQuiz(bank, "tutte");
-  }
   const options = [["tutte", `Tutte le domande (${bank.count})`]];
-  if (bank.wrong) options.push(["sbagliate", `Solo quelle sbagliate (${bank.wrong})`]);
+  if (bank.due) options.push(["ripasso", `Da ripassare oggi (${bank.due})`]);
+  if (bank.unseen && bank.unseen < bank.count) {
+    options.push(["nuove", `Solo quelle mai viste (${bank.unseen})`]);
+  }
   if (bank.flags) options.push(["contrassegnate", `Solo le contrassegnate (${bank.flags})`]);
+  if (bank.tags.length) options.push(["argomento", "Scegli un argomento…"]);
+
+  if (options.length === 1) {
+    startQuiz(bank, "tutte");
+    return;
+  }
   sheet(bank.title, options.map(([value, label]) =>
     `<button class="btn ghost wide mt" data-filter="${value}">${esc(label)}</button>`).join(""),
     (root, close) => {
       $$("[data-filter]", root).forEach((b) => {
-        b.onclick = () => { close(); startQuiz(bank, b.dataset.filter); };
+        b.onclick = () => {
+          close();
+          if (b.dataset.filter === "argomento") chooseTag(bank);
+          else startQuiz(bank, b.dataset.filter);
+        };
       });
     });
 }
 
-async function startQuiz(bank, filter) {
+function chooseTag(bank) {
+  sheet("Argomento", bank.tags.map((t) =>
+    `<button class="btn ghost wide mt" data-tag="${esc(t)}">#${esc(t)}</button>`).join(""),
+    (root, close) => {
+      $$("[data-tag]", root).forEach((b) => {
+        b.onclick = () => { close(); startQuiz(bank, "argomento", b.dataset.tag); };
+      });
+    });
+}
+
+async function startQuiz(bank, filter, tag) {
   const questions = await bankQuestions(bank.id);
-  const s = buildSession(bank, questions, filter);
+  const s = buildSession(bank, questions, filter, tag);
   if (!s.items.length) {
     toast("Non ci sono domande da ripassare in questo banco.");
     return;
@@ -662,8 +891,7 @@ function bankMenu(bank) {
   `, (root, close) => {
     $("[data-act=export]", root).onclick = async () => {
       close();
-      const text = await bankText(bank.id);
-      downloadFile(stemOf(bank.id) + ".txt", text, "text/plain");
+      downloadFile(stemOf(bank.id) + ".txt", await bankText(bank.id), "text/plain");
     };
     const ren = $("[data-act=rename]", root);
     if (ren) {
@@ -695,10 +923,17 @@ function bankMenu(bank) {
 }
 
 function renameBankData(oldId, newId) {
-  if (store.wrong[oldId]) { store.wrong[newId] = store.wrong[oldId]; delete store.wrong[oldId]; }
-  if (store.flags[oldId]) { store.flags[newId] = store.flags[oldId]; delete store.flags[oldId]; }
+  for (const map of [store.srs, store.flags, store.notes, store.tags]) {
+    if (map[oldId]) {
+      map[newId] = map[oldId];
+      delete map[oldId];
+    }
+  }
   for (const h of store.history) {
-    if (h.bank === oldId) { h.bank = newId; h.title = titleOf(newId); }
+    if (h.bank === oldId) {
+      h.bank = newId;
+      h.title = titleOf(newId);
+    }
   }
   save();
 }
@@ -732,6 +967,7 @@ function renderQuiz() {
   }).join("");
 
   const needsConfirm = !isExam(session) && !revealed && it.q.multi && itemAnswered(it);
+  const nota = noteOf(session.bankId, it.q.id);
 
   view.innerHTML = `
     <div class="spread small">
@@ -750,6 +986,9 @@ function renderQuiz() {
       <div class="feedback ${itemRight(it) ? "ok" : "ko"}">
         <b>${itemRight(it) ? "Risposta esatta" : "Risposta sbagliata"}</b>
         ${it.q.explanation ? `<div style="margin-top:4px">${esc(it.q.explanation)}</div>` : ""}
+        <div id="q-note" style="margin-top:8px;font-style:italic;cursor:pointer;${nota ? "" : "opacity:.7"}">
+          ${nota ? esc(nota) : "Aggiungi una nota"}
+        </div>
       </div>` : ""}
 
     <div class="quiz-nav">
@@ -760,11 +999,12 @@ function renderQuiz() {
     </div>
   `;
 
-  $$("[data-a]").forEach((b) => {
+  $$("[data-a]", view).forEach((b) => {
     b.onclick = () => onAnswer(it, Number(b.dataset.a));
   });
   if ($("#prev")) $("#prev").onclick = () => { session.index--; render(); };
   if ($("#confirm")) $("#confirm").onclick = () => reveal(it);
+  if ($("#q-note")) $("#q-note").onclick = () => editNote(session.bankId, it.q, render);
   $("#next").onclick = () => {
     if (last) askFinish();
     else { session.index++; render(); }
@@ -831,7 +1071,7 @@ function finishQuiz() {
   go({ name: "result" });
 }
 
-// timer e cronometro ---------------------------------------------------
+// timer e cronometro ----------------------------------------------------
 
 function startTicker() {
   stopTicker();
@@ -890,7 +1130,7 @@ function showMap() {
     });
 }
 
-// -------------------------------------------------------------- risultato
+// --------------------------------------------------------------- risultato
 
 function renderResult() {
   if (!session) return go({ name: "home" }, false);
@@ -913,6 +1153,9 @@ function renderResult() {
         return `<div class="line" style="color:${isCorrect ? "var(--ok)" : "var(--ko)"};
           font-weight:${picked ? 700 : 400}">${isCorrect ? "✓" : "✗"} ${esc(it.q.answers[o])}</div>`;
       }).join("");
+    const nota = noteOf(session.bankId, it.q.id);
+    const tags = tagsOf(session.bankId, it.q);
+    const card = cardOf(session.bankId, it.q.id);
     return `
       <div class="card review">
         <div>
@@ -925,6 +1168,18 @@ function renderResult() {
           ${itemAnswered(it) ? "" : `<div class="small">Senza risposta</div>`}
         </div>
         ${it.q.explanation ? `<div class="small" style="margin-top:8px">Spiegazione: ${esc(it.q.explanation)}</div>` : ""}
+        ${nota ? `<div style="margin-top:8px;font-style:italic;font-size:14px">${esc(nota)}</div>` : ""}
+        ${tags.length ? `<div style="margin-top:6px;font-size:12px;color:var(--indigo)">${
+          tags.map((t) => "#" + esc(t)).join("  ")}</div>` : ""}
+        <div class="spread" style="margin-top:4px">
+          <div>
+            <button class="btn text" data-note="${i}" style="padding:6px 8px">Nota</button>
+            <button class="btn text" data-tags="${i}" style="padding:6px 8px">Argomenti</button>
+          </div>
+          <span class="small">${card
+            ? `Scatola ${card.box} di ${SCATOLA_MAX} · torna ${whenShort(card.due)}`
+            : "Mai affrontata"}</span>
+        </div>
       </div>`;
   }).join("");
 
@@ -965,8 +1220,7 @@ function renderResult() {
     };
   }
   $("#r-all").onclick = async () => {
-    const banks = await allBanks();
-    const bank = banks.find((b) => b.id === session.bankId);
+    const bank = (await allBanks()).find((b) => b.id === session.bankId);
     if (!bank) return go({ name: "home" });
     startQuiz(bank, "tutte");
   };
@@ -976,6 +1230,47 @@ function renderResult() {
     if (navigator.share) navigator.share({ text }).catch(() => {});
     else { navigator.clipboard.writeText(text); toast("Risultato copiato."); }
   };
+  $$("[data-note]", view).forEach((b) => {
+    b.onclick = () => editNote(session.bankId,
+      session.items[Number(b.dataset.note)].q, renderResult);
+  });
+  $$("[data-tags]", view).forEach((b) => {
+    b.onclick = () => editTags(session.bankId,
+      session.items[Number(b.dataset.tags)].q, renderResult);
+  });
+}
+
+// -------------------------------------------------------- note e argomenti
+
+function editNote(bankId, q, after) {
+  sheet("La tua nota", `
+    <div class="small mt">Perché hai sbagliato? Te la ritrovi la volta dopo.</div>
+    <textarea id="note-text" style="margin-top:8px">${esc(noteOf(bankId, q.id))}</textarea>
+    <button class="btn wide mt" id="note-save">Salva</button>
+  `, (root, close) => {
+    $("#note-text", root).focus();
+    $("#note-save", root).onclick = () => {
+      setNote(bankId, q.id, $("#note-text", root).value);
+      close();
+      if (after) after();
+    };
+  });
+}
+
+function editTags(bankId, q, after) {
+  sheet("Argomenti della domanda", `
+    <div class="small mt">Separati da virgola: cloud storage, iam, networking</div>
+    ${q.tags.length ? `<div class="small">Dal file: ${esc(q.tags.join(", "))}</div>` : ""}
+    <input type="text" id="tag-text" style="margin-top:8px" value="${esc(userTagsOf(bankId, q.id).join(" "))}">
+    <button class="btn wide mt" id="tag-save">Salva</button>
+  `, (root, close) => {
+    $("#tag-text", root).focus();
+    $("#tag-save", root).onclick = () => {
+      setUserTags(bankId, q.id, parseTagInput($("#tag-text", root).value));
+      close();
+      if (after) after();
+    };
+  });
 }
 
 // ------------------------------------------------------------ statistiche
@@ -1005,17 +1300,19 @@ function renderStats() {
   }
 
   let banksHtml = "";
+  const adesso = Date.now();
   for (const [bankId, list] of perBank) {
     const values = list.map((h) => pct(h));
     const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
     const best = Math.max(...values);
-    const wrong = setOf(store.wrong, bankId).size;
+    const cards = store.srs[bankId] || {};
+    const due = Object.values(cards).filter((c) => c.due <= adesso).length;
     banksHtml += `
       <div class="card">
         <div class="bold">${esc(list[0].title)}</div>
         <div class="small">${list.length} tentativi · media ${avg}% · record ${best}%</div>
         <div class="bar"><div style="width:${avg}%;background:${tint(avg)}"></div></div>
-        ${wrong ? `<div class="small" style="color:var(--warn);margin-top:6px">${wrong} da ripassare</div>` : ""}
+        ${due ? `<div class="small" style="color:var(--warn);margin-top:6px">${due} da ripassare oggi</div>` : ""}
       </div>`;
   }
 
@@ -1040,12 +1337,16 @@ function renderStats() {
     <h2 class="section">Per banco</h2>
     ${banksHtml}
 
+    <div id="per-tag"></div>
+
     <h2 class="section">Ultimi tentativi</h2>
     <div class="card">${recent}</div>
 
     <button class="btn ghost wide mt" id="csv">Esporta in CSV</button>
     <button class="btn danger wide mt" id="reset">Azzera statistiche</button>
   `;
+
+  paintTagStats(tint);
 
   $("#csv").onclick = () => {
     let csv = "quiz;data;modalita;corrette;totale;percentuale;secondi\n";
@@ -1056,12 +1357,51 @@ function renderStats() {
     downloadFile("lanquiz-statistiche.csv", csv, "text/csv");
   };
   $("#reset").onclick = () => {
-    if (!confirm("Cancellare storico, medie e lista delle domande da ripassare?")) return;
+    if (!confirm("Cancellare storico, medie e stato del ripasso?\n\nLe note e gli argomenti che hai scritto restano.")) return;
     store.history = [];
-    store.wrong = {};
+    store.srs = {};
     save();
     renderStats();
   };
+}
+
+/** Su quali argomenti vai peggio: si legge il conteggio ok/ko di ogni domanda. */
+async function paintTagStats(tint) {
+  if (!$("#per-tag")) return;
+  const perTag = new Map();
+  for (const bank of await allBanks()) {
+    const cards = store.srs[bank.id];
+    if (!cards) continue;
+    for (const q of await bankQuestions(bank.id)) {
+      const card = cards[q.id];
+      if (!card) continue;
+      for (const tag of tagsOf(bank.id, q)) {
+        const stat = perTag.get(tag) || { ok: 0, ko: 0 };
+        stat.ok += card.ok;
+        stat.ko += card.ko;
+        perTag.set(tag, stat);
+      }
+    }
+  }
+  const rows = Array.from(perTag.entries())
+    .map(([tag, s]) => ({
+      tag,
+      total: s.ok + s.ko,
+      pct: s.ok + s.ko ? Math.round((s.ok * 100) / (s.ok + s.ko)) : 0,
+    }))
+    .sort((a, b) => a.pct - b.pct);   // prima quelli che vanno peggio
+
+  const box = $("#per-tag");
+  if (!box) return;
+  box.innerHTML = `<h2 class="section">Per argomento</h2><div class="card">${
+    rows.length
+      ? rows.map((r) => `<div class="spread" style="padding:4px 0">
+          <span class="small">#${esc(r.tag)}</span>
+          <b style="color:${tint(r.pct)}">${r.total} risposte · ${r.pct}% esatte</b>
+        </div>`).join("")
+      : `<div class="small">Nessun argomento ancora assegnato: aggiungine dal riepilogo
+         di un quiz, oppure scrivili nei file con @argomento.</div>`
+  }</div>`;
 }
 
 // ------------------------------------------------------------ impostazioni
@@ -1098,6 +1438,17 @@ function renderSettings() {
     </div>
 
     <div class="card">
+      <b style="color:var(--indigo)">Backup e trasferimento</b>
+      <div class="small mt">Un solo file con quiz importati, stato del ripasso, note,
+        argomenti e statistiche: serve a passare dal telefono a qui e viceversa.</div>
+      <button class="btn ghost wide mt" id="bk-export">Esporta backup</button>
+      <label class="btn ghost wide mt" style="display:block;text-align:center;cursor:pointer">
+        Importa backup
+        <input type="file" id="bk-file" accept=".json,application/json" hidden>
+      </label>
+    </div>
+
+    <div class="card">
       <b style="color:var(--indigo)">Quiz preinstallati</b>
       ${store.hidden.length
         ? `<button class="btn ghost wide mt" id="restore">Rimetti in lista quelli nascosti (${store.hidden.length})</button>`
@@ -1108,8 +1459,7 @@ function renderSettings() {
       <b style="color:var(--indigo)">Versione</b>
       <div class="small mt">Web app ${VERSION}. Si aggiorna da sola a ogni apertura con rete.</div>
       <div class="small mt">
-        App Android:
-        <a href="https://github.com/${REPO}/releases/latest">scarica l'APK</a>
+        App Android: <a href="https://github.com/${REPO}/releases/latest">scarica l'APK</a>
       </div>
     </div>
   `;
@@ -1130,9 +1480,106 @@ function renderSettings() {
     save();
   };
   $("#auto").onchange = (e) => { store.settings.autoNext = e.target.checked; save(); };
+  $("#bk-export").onclick = exportBackup;
+  $("#bk-file").onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) importBackup(await file.text());
+    e.target.value = "";
+  };
   if ($("#restore")) {
     $("#restore").onclick = () => { store.hidden = []; save(); renderSettings(); };
   }
+}
+
+// ----------------------------------------------------------------- backup
+
+/* Stesso formato letto e scritto dall'app Android (Store.exportAll). */
+
+function exportBackup() {
+  const data = {
+    app: "LanQuiz",
+    formato: 1,
+    esportato: Date.now(),
+    settings: store.settings,
+    history: store.history,
+    hidden: store.hidden,
+    srs: store.srs,
+    flags: store.flags,
+    notes: store.notes,
+    tags: store.tags,
+    banks: store.user,
+  };
+  downloadFile(`lanquiz-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    JSON.stringify(data, null, 2), "application/json");
+}
+
+function importBackup(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    toast("Backup non importato: file illeggibile.");
+    return;
+  }
+  if (data.app !== "LanQuiz") {
+    toast("Backup non importato: non è un backup di LanQuiz.");
+    return;
+  }
+  const unisci = confirm(
+    "«OK» unisce il backup a quello che hai già: sul ripasso vince la versione "
+    + "aggiornata più di recente.\n\n«Annulla» sostituisce tutto con il contenuto del file.");
+
+  if (!unisci) store = emptyStore();
+  if (data.settings) store.settings = Object.assign({}, DEFAULTS, data.settings);
+
+  let aggiunti = 0;
+  for (const [id, content] of Object.entries(data.banks || {})) {
+    if (store.user[id] === undefined) {
+      store.user[id] = content;
+      store.migrated[id] = true;
+      aggiunti++;
+    }
+  }
+
+  const visti = new Set(store.history.map((h) => h.bank + "@" + h.ts));
+  for (const h of data.history || []) {
+    if (!visti.has(h.bank + "@" + h.ts)) {
+      visti.add(h.bank + "@" + h.ts);
+      store.history.push(h);
+    }
+  }
+  store.history.sort((a, b) => a.ts - b.ts);
+  store.history = store.history.slice(-500);
+
+  for (const [bankId, cards] of Object.entries(data.srs || {})) {
+    const mine = store.srs[bankId] || (store.srs[bankId] = {});
+    for (const [q, card] of Object.entries(cards)) {
+      // vince la voce toccata più di recente: è quella che sa come stai davvero
+      if (!mine[q] || (card.last || 0) > (mine[q].last || 0)) mine[q] = card;
+    }
+  }
+  for (const [bankId, map] of Object.entries(data.notes || {})) {
+    const mine = store.notes[bankId] || (store.notes[bankId] = {});
+    for (const [q, testo] of Object.entries(map)) {
+      if (!mine[q]) mine[q] = testo;
+    }
+  }
+  for (const [bankId, map] of Object.entries(data.tags || {})) {
+    const mine = store.tags[bankId] || (store.tags[bankId] = {});
+    for (const [q, tags] of Object.entries(map)) {
+      mine[q] = Array.from(new Set((mine[q] || []).concat(tags)));
+    }
+  }
+  for (const [bankId, ids] of Object.entries(data.flags || {})) {
+    store.flags[bankId] = Array.from(new Set((store.flags[bankId] || []).concat(ids)));
+  }
+  store.hidden = Array.from(new Set(store.hidden.concat(data.hidden || [])));
+
+  cache.clear();
+  save();
+  applyTheme();
+  toast(`Backup importato: ${aggiunti} quiz aggiunti.`);
+  go({ name: "home" });
 }
 
 // ---------------------------------------------------------------- importa
@@ -1172,6 +1619,7 @@ function renderImport() {
         • un <code>*</code> davanti a una risposta la marca come corretta, così una
         domanda può averne più di una<br>
         • un campo che inizia con <code>##</code> è la spiegazione mostrata dopo la risposta<br>
+        • un campo che inizia con <code>@</code> elenca gli argomenti della domanda<br>
         • le righe che iniziano con <code>#</code> sono commenti<br><br>
         Senza asterischi vale la regola di sempre: la prima risposta è quella esatta.
       </div>
@@ -1222,7 +1670,7 @@ function downloadFile(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-// --------------------------------------------------------------- pannello
+// ---------------------------------------------------------------- pannello
 
 function sheet(title, bodyHtml, wire) {
   const overlay = document.createElement("div");
