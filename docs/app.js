@@ -1,4 +1,4 @@
-/* LanQuiz web â€” la stessa app Android in versione PWA.
+/* LanQuiz web — la stessa app Android in versione PWA.
    Tutto gira nel browser: i banchi preinstallati arrivano da banks/, quelli
    importati e i risultati stanno in localStorage. Nessun server.
 
@@ -48,7 +48,7 @@ function whenText(ts) {
     { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-/** "oggi", "domani", "fra 5 giorni", oppure la data se Ã¨ lontana. */
+/** "oggi", "domani", "fra 5 giorni", oppure la data se è lontana. */
 function whenShort(ts) {
   const giorni = Math.max(0, Math.round((ts - Date.now()) / GIORNO));
   if (giorni <= 0) return "oggi";
@@ -95,7 +95,7 @@ function emptyStore() {
     hidden: [],
     resume: null,
     user: {},     // banco importato -> contenuto del file
-    migrated: {}, // banchi giÃ  convertiti dagli id della 1.0
+    migrated: {}, // banchi già convertiti dagli id della 1.0
     wrong: {},    // resto della 1.0, letto solo dalla conversione
   };
 }
@@ -148,8 +148,8 @@ function applyTheme() {
 // ----------------------------------------------------------------- lettore
 
 /* Stesse regole del lettore Android (Parser.java):
-   domanda;risposta esatta;errata;â€¦  Â·  * marca una corretta  Â·  ## spiegazione
-   Â·  @argomento  Â·  # commento  Â·  separatore ; poi tab poi virgola  Â·  JSON. */
+   domanda;risposta esatta;errata;…  ·  * marca una corretta  ·  ## spiegazione
+   ·  @argomento  ·  # commento  ·  separatore ; poi tab poi virgola  ·  JSON. */
 
 const FNV_OFFSET = 0xcbf29ce484222325n;
 const FNV_PRIME = 0x100000001b3n;
@@ -169,7 +169,7 @@ const normalizeText = (text) => text.trim().replace(/\s+/g, " ").toLowerCase();
 
 const qid = (text) => fnv1a64(normalizeText(text));
 
-/** L'id usato fino alla 1.0: serve solo a recuperare i dati giÃ  salvati. */
+/** L'id usato fino alla 1.0: serve solo a recuperare i dati già salvati. */
 function qidLegacy(text) {
   const norm = normalizeText(text);
   let h1 = 0x811c9dc5;
@@ -279,7 +279,7 @@ function parseJsonBank(content) {
 
 // ------------------------------------------------------------------ banchi
 
-const cache = new Map();   // id -> domande giÃ  lette
+const cache = new Map();   // id -> domande già lette
 let bundledIds = [];
 
 const stemOf = (id) => id.replace(/\.[A-Za-z0-9]+$/, "");
@@ -447,7 +447,7 @@ function setUserTags(bankId, id, tags) {
   save();
 }
 
-/** Gli argomenti che valgono per una domanda: quelli del file piÃ¹ i tuoi. */
+/** Gli argomenti che valgono per una domanda: quelli del file più i tuoi. */
 function tagsOf(bankId, q) {
   const out = q.tags.slice();
   for (const t of userTagsOf(bankId, q.id)) {
@@ -468,7 +468,7 @@ function parseTagInput(raw) {
 // -------------------------------------------------------- ripasso (Leitner)
 
 /* Quanti giorni prima che una domanda torni a farsi vedere: chi sbaglia
-   ricomincia dalla scatola 0, chi risponde bene sale e sparisce piÃ¹ a lungo. */
+   ricomincia dalla scatola 0, chi risponde bene sale e sparisce più a lungo. */
 const GIORNI_PER_SCATOLA = [0, 1, 3, 7, 16, 35];
 const SCATOLA_MAX = GIORNI_PER_SCATOLA.length - 1;
 
@@ -645,7 +645,7 @@ async function renderHome() {
       <div class="card soft">
         <b>Quiz interrotto</b>
         <div class="small" style="color:inherit">
-          ${esc(store.resume.bankTitle)} â€” domanda ${store.resume.index + 1} di ${store.resume.items.length}
+          ${esc(store.resume.bankTitle)} — domanda ${store.resume.index + 1} di ${store.resume.items.length}
         </div>
         <div class="row mt">
           <button class="btn" id="do-resume">Riprendi</button>
@@ -653,12 +653,12 @@ async function renderHome() {
         </div>
       </div>` : ""}
 
-    <input type="text" id="q" placeholder="Cerca un quizâ€¦" value="${esc(homeQuery)}">
+    <input type="text" id="q" placeholder="Cerca un quiz…" value="${esc(homeQuery)}">
 
     <div class="card">
       <b style="color:var(--indigo)">Impostazioni sessione</b>
 
-      <label class="field">ModalitÃ </label>
+      <label class="field">Modalità</label>
       <div class="chips">
         ${chip("mode", "studio", "Studio", s.mode === "studio")}
         ${chip("mode", "esame", "Esame", s.mode === "esame")}
@@ -675,7 +675,7 @@ async function renderHome() {
         ${chip("count", 10, "10", countValue === 10)}
         ${chip("count", 25, "25", countValue === 25)}
         ${chip("count", 50, "Prova esame", countValue === 50)}
-        ${chip("count", "custom", countValue === "custom" ? s.count : "Altroâ€¦", countValue === "custom")}
+        ${chip("count", "custom", countValue === "custom" ? s.count : "Altro…", countValue === "custom")}
       </div>
 
       <label class="field">Timer</label>
@@ -684,7 +684,7 @@ async function renderHome() {
         ${chip("timer", 15, "15 min", timerValue === 15)}
         ${chip("timer", 30, "30 min", timerValue === 30)}
         ${chip("timer", 90, "90 min", timerValue === 90)}
-        ${chip("timer", "custom", timerValue === "custom" ? s.timer + " min" : "Altroâ€¦", timerValue === "custom")}
+        ${chip("timer", "custom", timerValue === "custom" ? s.timer + " min" : "Altro…", timerValue === "custom")}
       </div>
 
       <label class="switch">
@@ -695,7 +695,7 @@ async function renderHome() {
       </label>
     </div>
 
-    <div id="banks"><div class="small">Carico i quizâ€¦</div></div>
+    <div id="banks"><div class="small">Carico i quiz…</div></div>
   `;
 
   $("#a-stats").onclick = () => go({ name: "stats" });
@@ -772,7 +772,7 @@ async function paintBanks() {
 
   if (!banks.length) {
     box.innerHTML = `<div class="small" style="padding:20px 0">${homeQuery
-      ? `Nessun quiz corrisponde a Â«${esc(homeQuery)}Â».`
+      ? `Nessun quiz corrisponde a «${esc(homeQuery)}».`
       : "Nessun quiz. Importane uno dal pulsante + in alto."}</div>`;
     return;
   }
@@ -800,14 +800,14 @@ async function paintBanks() {
         stato = "Ripasso in pari";
         colore = "var(--ok)";
       }
-      if (b.unseen && b.unseen < b.count) stato += ` Â· ${b.unseen} mai viste`;
+      if (b.unseen && b.unseen < b.count) stato += ` · ${b.unseen} mai viste`;
 
       html += `
         <div class="card bank tap" data-bank="${esc(b.id)}">
           <div class="spread">
             <div>
               <div class="title">${esc(b.title)}</div>
-              <div class="small">${esc(bits.join(" Â· "))}</div>
+              <div class="small">${esc(bits.join(" · "))}</div>
               <div class="small" style="color:${colore}">${esc(stato)}</div>
             </div>
             <button class="icon-btn" data-menu="${esc(b.id)}" title="Opzioni">&#8942;</button>
@@ -843,7 +843,7 @@ function startFromBank(bank) {
     options.push(["nuove", `Solo quelle mai viste (${bank.unseen})`]);
   }
   if (bank.flags) options.push(["contrassegnate", `Solo le contrassegnate (${bank.flags})`]);
-  if (bank.tags.length) options.push(["argomento", "Scegli un argomentoâ€¦"]);
+  if (bank.tags.length) options.push(["argomento", "Scegli un argomento…"]);
 
   if (options.length === 1) {
     startQuiz(bank, "tutte");
@@ -909,8 +909,8 @@ function bankMenu(bank) {
     $("[data-act=delete]", root).onclick = () => {
       close();
       const msg = bank.bundled
-        ? `Nascondere Â«${bank.title}Â» dalla lista? Ãˆ un quiz preinstallato: potrai rimetterlo dalle impostazioni.`
-        : `Eliminare Â«${bank.title}Â»? Si perdono anche i suoi risultati.`;
+        ? `Nascondere «${bank.title}» dalla lista? È un quiz preinstallato: potrai rimetterlo dalle impostazioni.`
+        : `Eliminare «${bank.title}»? Si perdono anche i suoi risultati.`;
       if (!confirm(msg)) return;
       if (bank.bundled) store.hidden.push(bank.id);
       else delete store.user[bank.id];
@@ -978,7 +978,7 @@ function renderQuiz() {
 
     <div class="question">${esc(it.q.text)}</div>
     ${it.q.multi ? `<div class="small" style="color:var(--warn);margin-bottom:8px">
-      PiÃ¹ risposte corrette: scegli tutte quelle giuste, poi conferma.</div>` : ""}
+      Più risposte corrette: scegli tutte quelle giuste, poi conferma.</div>` : ""}
 
     <div class="answers">${answersHtml}</div>
 
@@ -1085,7 +1085,7 @@ function startTicker() {
       if (session.secondsLeft <= 0) {
         session.timedOut = true;
         stopTicker();
-        toast("Tempo scaduto: il quiz Ã¨ stato consegnato.");
+        toast("Tempo scaduto: il quiz è stato consegnato.");
         finishQuiz();
       }
     }
@@ -1151,7 +1151,7 @@ function renderResult() {
         const isCorrect = it.q.correct.includes(o);
         const picked = it.selected.includes(o);
         return `<div class="line" style="color:${isCorrect ? "var(--ok)" : "var(--ko)"};
-          font-weight:${picked ? 700 : 400}">${isCorrect ? "âœ“" : "âœ—"} ${esc(it.q.answers[o])}</div>`;
+          font-weight:${picked ? 700 : 400}">${isCorrect ? "✓" : "✗"} ${esc(it.q.answers[o])}</div>`;
       }).join("");
     const nota = noteOf(session.bankId, it.q.id);
     const tags = tagsOf(session.bankId, it.q);
@@ -1177,7 +1177,7 @@ function renderResult() {
             <button class="btn text" data-tags="${i}" style="padding:6px 8px">Argomenti</button>
           </div>
           <span class="small">${card
-            ? `Scatola ${card.box} di ${SCATOLA_MAX} Â· torna ${whenShort(card.due)}`
+            ? `Scatola ${card.box} di ${SCATOLA_MAX} · torna ${whenShort(card.due)}`
             : "Mai affrontata"}</span>
         </div>
       </div>`;
@@ -1189,8 +1189,8 @@ function renderResult() {
       <div class="score" style="color:${color}">${p}%</div>
       <div class="bold" style="color:${color}">${p >= pass ? "Superato" : "Non superato"}</div>
       <div class="mt">${right} risposte esatte su ${total}</div>
-      <div class="small">Soglia di superamento: ${pass}% Â· Tempo impiegato: ${duration(session.elapsed)}</div>
-      ${session.timedOut ? `<div class="feedback ko mt">Tempo scaduto: il quiz Ã¨ stato consegnato.</div>` : ""}
+      <div class="small">Soglia di superamento: ${pass}% · Tempo impiegato: ${duration(session.elapsed)}</div>
+      ${session.timedOut ? `<div class="feedback ko mt">Tempo scaduto: il quiz è stato consegnato.</div>` : ""}
       ${wrongCount ? `<button class="btn wide mt" id="r-wrong">Rifai le sbagliate (${wrongCount})</button>` : ""}
       <div class="row mt">
         <button class="btn ghost grow" id="r-all">Rifai tutto</button>
@@ -1226,7 +1226,7 @@ function renderResult() {
   };
   $("#r-home").onclick = () => go({ name: "home" });
   $("#r-share").onclick = () => {
-    const text = `LanQuiz â€” ${session.bankTitle}: ${p}% (${right}/${total})`;
+    const text = `LanQuiz — ${session.bankTitle}: ${p}% (${right}/${total})`;
     if (navigator.share) navigator.share({ text }).catch(() => {});
     else { navigator.clipboard.writeText(text); toast("Risultato copiato."); }
   };
@@ -1244,7 +1244,7 @@ function renderResult() {
 
 function editNote(bankId, q, after) {
   sheet("La tua nota", `
-    <div class="small mt">PerchÃ© hai sbagliato? Te la ritrovi la volta dopo.</div>
+    <div class="small mt">Perché hai sbagliato? Te la ritrovi la volta dopo.</div>
     <textarea id="note-text" style="margin-top:8px">${esc(noteOf(bankId, q.id))}</textarea>
     <button class="btn wide mt" id="note-save">Salva</button>
   `, (root, close) => {
@@ -1310,7 +1310,7 @@ function renderStats() {
     banksHtml += `
       <div class="card">
         <div class="bold">${esc(list[0].title)}</div>
-        <div class="small">${list.length} tentativi Â· media ${avg}% Â· record ${best}%</div>
+        <div class="small">${list.length} tentativi · media ${avg}% · record ${best}%</div>
         <div class="bar"><div style="width:${avg}%;background:${tint(avg)}"></div></div>
         ${due ? `<div class="small" style="color:var(--warn);margin-top:6px">${due} da ripassare oggi</div>` : ""}
       </div>`;
@@ -1320,7 +1320,7 @@ function renderStats() {
     <div class="spread" style="padding:6px 0">
       <div>
         <div style="font-size:14px">${esc(h.title)}</div>
-        <div class="small">${whenText(h.ts)} Â· ${h.mode} Â· ${duration(h.seconds || 0)}</div>
+        <div class="small">${whenText(h.ts)} · ${h.mode} · ${duration(h.seconds || 0)}</div>
       </div>
       <b style="color:${tint(pct(h))}">${pct(h)}%</b>
     </div>`).join("");
@@ -1397,7 +1397,7 @@ async function paintTagStats(tint) {
     rows.length
       ? rows.map((r) => `<div class="spread" style="padding:4px 0">
           <span class="small">#${esc(r.tag)}</span>
-          <b style="color:${tint(r.pct)}">${r.total} risposte Â· ${r.pct}% esatte</b>
+          <b style="color:${tint(r.pct)}">${r.total} risposte · ${r.pct}% esatte</b>
         </div>`).join("")
       : `<div class="small">Nessun argomento ancora assegnato: aggiungine dal riepilogo
          di un quiz, oppure scrivili nei file con @argomento.</div>`
@@ -1522,12 +1522,12 @@ function importBackup(text) {
     return;
   }
   if (data.app !== "LanQuiz") {
-    toast("Backup non importato: non Ã¨ un backup di LanQuiz.");
+    toast("Backup non importato: non è un backup di LanQuiz.");
     return;
   }
   const unisci = confirm(
-    "Â«OKÂ» unisce il backup a quello che hai giÃ : sul ripasso vince la versione "
-    + "aggiornata piÃ¹ di recente.\n\nÂ«AnnullaÂ» sostituisce tutto con il contenuto del file.");
+    "«OK» unisce il backup a quello che hai già: sul ripasso vince la versione "
+    + "aggiornata più di recente.\n\n«Annulla» sostituisce tutto con il contenuto del file.");
 
   if (!unisci) store = emptyStore();
   if (data.settings) store.settings = Object.assign({}, DEFAULTS, data.settings);
@@ -1554,7 +1554,7 @@ function importBackup(text) {
   for (const [bankId, cards] of Object.entries(data.srs || {})) {
     const mine = store.srs[bankId] || (store.srs[bankId] = {});
     for (const [q, card] of Object.entries(cards)) {
-      // vince la voce toccata piÃ¹ di recente: Ã¨ quella che sa come stai davvero
+      // vince la voce toccata più di recente: è quella che sa come stai davvero
       if (!mine[q] || (card.last || 0) > (mine[q].last || 0)) mine[q] = card;
     }
   }
@@ -1589,7 +1589,7 @@ function renderImport() {
   view.innerHTML = `
     <div class="card">
       <b style="color:var(--indigo)">Da un file</b>
-      <div class="small mt">File .txt, .csv o .json giÃ  nel formato del quiz.</div>
+      <div class="small mt">File .txt, .csv o .json già nel formato del quiz.</div>
       <input type="file" id="file" accept=".txt,.csv,.json,text/plain,text/csv,application/json" class="mt">
     </div>
 
@@ -1605,7 +1605,7 @@ function renderImport() {
     <div class="card">
       <b style="color:var(--indigo)">Da un indirizzo web</b>
       <label class="field">Indirizzo</label>
-      <input type="url" id="url" placeholder="https://â€¦">
+      <input type="url" id="url" placeholder="https://…">
       <button class="btn ghost wide mt" id="do-url">Importa</button>
       <div class="small mt">Funziona solo se il sito consente la lettura da altri domini (CORS).</div>
     </div>
@@ -1616,12 +1616,12 @@ function renderImport() {
         Una domanda per riga, campi separati da punto e virgola:<br>
         <code>domanda;risposta esatta;errata;errata</code><br><br>
         Estensioni facoltative:<br>
-        â€¢ un <code>*</code> davanti a una risposta la marca come corretta, cosÃ¬ una
-        domanda puÃ² averne piÃ¹ di una<br>
-        â€¢ un campo che inizia con <code>##</code> Ã¨ la spiegazione mostrata dopo la risposta<br>
-        â€¢ un campo che inizia con <code>@</code> elenca gli argomenti della domanda<br>
-        â€¢ le righe che iniziano con <code>#</code> sono commenti<br><br>
-        Senza asterischi vale la regola di sempre: la prima risposta Ã¨ quella esatta.
+        • un <code>*</code> davanti a una risposta la marca come corretta, così una
+        domanda può averne più di una<br>
+        • un campo che inizia con <code>##</code> è la spiegazione mostrata dopo la risposta<br>
+        • un campo che inizia con <code>@</code> elenca gli argomenti della domanda<br>
+        • le righe che iniziano con <code>#</code> sono commenti<br><br>
+        Senza asterischi vale la regola di sempre: la prima risposta è quella esatta.
       </div>
     </div>
   `;
@@ -1651,7 +1651,7 @@ function renderImport() {
 function finishImport(content, name) {
   try {
     const id = saveUserBank(name, content);
-    toast(`Importato Â«${titleOf(id)}Â»: ${parseBank(content).length} domande.`);
+    toast(`Importato «${titleOf(id)}»: ${parseBank(content).length} domande.`);
     go({ name: "home" });
   } catch (err) {
     toast("Importazione non riuscita: " + err.message);
@@ -1719,7 +1719,7 @@ async function boot() {
         });
       });
     } catch (e) {
-      /* niente offline: l'app funziona lo stesso finchÃ© c'Ã¨ rete */
+      /* niente offline: l'app funziona lo stesso finché c'è rete */
     }
   }
 }

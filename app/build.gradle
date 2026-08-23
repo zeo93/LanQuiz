@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
 }
 
-// La chiave di firma non Ã¨ nel repo (vedi .gitignore). In locale si usa
+// La chiave di firma non è nel repo (vedi .gitignore). In locale si usa
 // app/release.keystore; in CI la si ricostruisce dai secret del repository.
 def keystorePath = System.getenv('LANQUIZ_KEYSTORE') ?: 'release.keystore'
 def keystoreFile = file(keystorePath)
