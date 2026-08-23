@@ -3,6 +3,8 @@ package com.marco.lanquiz;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -185,9 +187,12 @@ public class QuizActivity extends AppCompatActivity {
     public boolean onPrepareOptionsMenu(Menu menu) {
         MenuItem flag = menu.findItem(R.id.menu_flag);
         Session.Item item = session == null ? null : session.current();
-        if (flag != null && item != null) {
-            flag.getIcon().setTint(item.flagged
-                    ? getColor(R.color.flag) : getColor(R.color.muted));
+        if (flag != null && item != null && flag.getIcon() != null) {
+            // mutate(): la drawable arriva dalla cache delle risorse, tingerla
+            // senza copiarla colorerebbe anche le altre icone uguali
+            Drawable icon = flag.getIcon().mutate();
+            icon.setTint(item.flagged ? getColor(R.color.flag) : getColor(R.color.muted));
+            flag.setIcon(icon);
         }
         return super.onPrepareOptionsMenu(menu);
     }
@@ -440,9 +445,8 @@ public class QuizActivity extends AppCompatActivity {
                 } else {
                     bg = getColor(R.color.surface2);
                 }
-                android.graphics.drawable.GradientDrawable shape =
-                        new android.graphics.drawable.GradientDrawable();
-                shape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                GradientDrawable shape = new GradientDrawable();
+                shape.setShape(GradientDrawable.RECTANGLE);
                 shape.setCornerRadius(Ui.dp(QuizActivity.this, 10));
                 shape.setColor(bg);
                 if (position == session.index) {

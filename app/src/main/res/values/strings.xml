@@ -34,8 +34,6 @@
     <string name="scarta">Scarta</string>
 
     <!-- Avvio quiz -->
-    <string name="avvia">Avvia</string>
-    <string name="scegli_cosa_ripassare">%s</string>
     <string name="tutte_le_domande">Tutte le domande (%d)</string>
     <string name="solo_sbagliate">Solo quelle sbagliate (%d)</string>
     <string name="solo_contrassegnate">Solo le contrassegnate (%d)</string>
@@ -75,7 +73,6 @@
     <string name="riprova_sbagliate">Rifai le sbagliate (%d)</string>
     <string name="torna_lista">Torna alla lista</string>
     <string name="rivedi">Rivedi le domande</string>
-    <string name="la_tua_risposta">La tua risposta: %s</string>
     <string name="condividi_risultato">Condividi</string>
     <string name="riepilogo_condivisione">LanQuiz — %1$s: %2$d%% (%3$d/%4$d)</string>
 
@@ -119,6 +116,7 @@
     <string name="nascondi_conferma">Nascondere «%s» dalla lista? È un quiz preinstallato: potrai rimetterlo dalle impostazioni.</string>
     <string name="rinomina_fallita">Nome già in uso.</string>
     <string name="condividi_quiz">Condividi quiz</string>
+    <string name="opzioni_quiz">Opzioni del quiz</string>
 
     <!-- Impostazioni -->
     <string name="impostazioni">Impostazioni</string>
@@ -135,7 +133,6 @@
     <string name="quiz_preinstallati">Quiz preinstallati</string>
     <string name="ripristina_nascosti">Rimetti in lista quelli nascosti (%d)</string>
     <string name="nessun_nascosto">Nessun quiz nascosto.</string>
-    <string name="dati">Dati</string>
 
     <!-- Aggiornamenti -->
     <string name="aggiornamenti">Aggiornamenti</string>
@@ -159,5 +156,4 @@
     <string name="chiudi">Chiudi</string>
     <string name="ok">OK</string>
     <string name="salva">Salva</string>
-    <string name="indietro">Indietro</string>
 </resources>

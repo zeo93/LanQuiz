@@ -15,6 +15,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,7 +26,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -391,10 +391,25 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
+        LinearLayout inner = new LinearLayout(this);
+        inner.setOrientation(LinearLayout.HORIZONTAL);
+        inner.setGravity(Gravity.CENTER_VERTICAL);
+        card.addView(inner, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        card.addView(col, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        inner.addView(col, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        // Le stesse voci del tocco prolungato, ma raggiungibili anche a vista.
+        ImageButton more = new ImageButton(this);
+        more.setImageResource(R.drawable.ic_more);
+        more.setBackground(null);
+        more.setContentDescription(getString(R.string.opzioni_quiz));
+        more.setOnClickListener(v -> showBankMenu(row.bank));
+        inner.addView(more, new LinearLayout.LayoutParams(
+                Ui.dp(this, 36), Ui.dp(this, 36)));
 
         TextView title = new TextView(this);
         title.setText(row.bank.title);

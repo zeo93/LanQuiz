@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <style name="Theme.LanQuiz" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/indigo</item>
         <item name="colorOnPrimary">#1E1B4B</item>
@@ -12,6 +12,6 @@
         <item name="colorError">@color/ko</item>
         <item name="android:statusBarColor">@color/surface</item>
         <item name="android:navigationBarColor">@color/bg</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

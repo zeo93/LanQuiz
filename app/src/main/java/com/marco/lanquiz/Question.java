@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** Una domanda con le sue risposte. Può avere più di una risposta corretta. */
 public class Question {
