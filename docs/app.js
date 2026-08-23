@@ -1701,27 +1701,48 @@ async function boot() {
   }
   render();
 
-  if ("serviceWorker" in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.register("sw.js");
-      reg.addEventListener("updatefound", () => {
-        const fresh = reg.installing;
-        if (!fresh) return;
-        fresh.addEventListener("statechange", () => {
-          if (fresh.state === "installed" && navigator.serviceWorker.controller) {
-            const banner = document.getElementById("update-banner");
-            banner.hidden = false;
-            document.getElementById("update-reload").onclick = () => {
-              fresh.postMessage("skip-waiting");
-              location.reload();
-            };
-          }
-        });
+  registraServiceWorker();
+}
+
+/**
+ * Il banner compare solo quando c'è davvero una versione ferma in attesa: la
+ * pagina era già controllata da un service worker (quindi non è la prima
+ * visita) e quello nuovo è installato ma non ancora attivo. Chi tocca
+ * «Aggiorna» lo fa partire, e la pagina si ricarica quando il nuovo prende il
+ * controllo — non un istante prima, altrimenti si ricaricherebbe sulla vecchia.
+ */
+function registraServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  const banner = document.getElementById("update-banner");
+  const aggiorna = document.getElementById("update-reload");
+  const chiudi = document.getElementById("update-dismiss");
+  const eraControllata = !!navigator.serviceWorker.controller;
+
+  if (chiudi) chiudi.onclick = () => { banner.hidden = true; };
+
+  const proponi = (attesa) => {
+    if (!attesa || !eraControllata || !banner.hidden) return;
+    banner.hidden = false;
+    aggiorna.onclick = () => {
+      aggiorna.disabled = true;
+      navigator.serviceWorker.addEventListener("controllerchange",
+        () => location.reload(), { once: true });
+      attesa.postMessage("skip-waiting");
+    };
+  };
+
+  navigator.serviceWorker.register("sw.js").then((reg) => {
+    proponi(reg.waiting);
+    reg.addEventListener("updatefound", () => {
+      const fresh = reg.installing;
+      if (!fresh) return;
+      fresh.addEventListener("statechange", () => {
+        if (fresh.state === "installed") proponi(reg.waiting);
       });
-    } catch (e) {
-      /* niente offline: l'app funziona lo stesso finché c'è rete */
-    }
-  }
+    });
+  }).catch(() => {
+    /* niente offline: l'app funziona lo stesso finché c'è rete */
+  });
 }
 
 boot();

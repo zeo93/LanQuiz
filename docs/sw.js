@@ -1,18 +1,17 @@
 /* Service worker: rete prima, cache come riserva.
    Ogni apertura con rete scarica l'ultima versione pubblicata; senza rete
    l'app e i banchi già visti restano disponibili. */
-const CACHE = "lanquiz-v2";
+const CACHE = "lanquiz-v3";
 const CORE = [
   "./", "index.html", "style.css", "app.js", "manifest.webmanifest",
   "banks.json", "icons/icon-192.png", "icons/icon-512.png",
 ];
 
+/* Niente skipWaiting() qui: la versione nuova resta in attesa finché non è
+   l'utente a chiederla dal banner. Attivandosi da sola, il banner annuncerebbe
+   un aggiornamento già applicato e non avrebbe modo di sparire. */
 self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE)
-      .then((c) => c.addAll(CORE))
-      .then(() => self.skipWaiting())
-  );
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)));
 });
 
 self.addEventListener("activate", (e) => {
