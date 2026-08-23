@@ -21,6 +21,13 @@ if ($Versione -notmatch '^\d+\.\d+(\.\d+)?$') {
     throw "La versione va scritta come 1.1 oppure 1.1.2, non '$Versione'."
 }
 
+# Windows PowerShell scrive UTF-8 con BOM, che in testa a build.gradle e a un
+# file .js non ci vuole: si scrive a mano senza.
+$senzaBom = New-Object System.Text.UTF8Encoding $false
+function Scrivi($percorso, $contenuto) {
+    [System.IO.File]::WriteAllText($percorso, $contenuto, $senzaBom)
+}
+
 $buildGradle = Join-Path $radice "app\build.gradle"
 $testo = Get-Content $buildGradle -Raw
 
@@ -29,13 +36,13 @@ $codiceNuovo = [int]$Matches[1] + 1
 
 $testo = $testo -replace 'versionCode \d+', "versionCode $codiceNuovo"
 $testo = $testo -replace 'versionName "[^"]*"', "versionName `"$Versione`""
-Set-Content $buildGradle $testo -Encoding utf8 -NoNewline
+Scrivi $buildGradle $testo
 
 # La web app mostra la sua versione in fondo alla pagina: va tenuta allineata.
 $appJs = Join-Path $radice "docs\app.js"
 $js = Get-Content $appJs -Raw
 $js = $js -replace 'const VERSION = "[^"]*";', "const VERSION = `"$Versione`";"
-Set-Content $appJs $js -Encoding utf8 -NoNewline
+Scrivi $appJs $js
 
 Write-Host "Versione $Versione (versionCode $codiceNuovo) - compilo..." -ForegroundColor Cyan
 & $gradle -p $radice assembleRelease
