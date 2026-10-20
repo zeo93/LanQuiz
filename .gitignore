@@ -9,3 +9,6 @@ local.properties
 # pubblicare un APK installabile sopra questa app. Copia di sicurezza a parte!
 *.keystore
 *.apk
+
+# Collegamento locale al progetto Vercel: e' per macchina, non per repo.
+.vercel
