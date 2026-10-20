@@ -12,3 +12,4 @@ local.properties
 
 # Collegamento locale al progetto Vercel: e' per macchina, non per repo.
 .vercel
+.env*

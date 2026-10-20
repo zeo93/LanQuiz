@@ -1,0 +1,6 @@
+# Su Vercel serve solo la web app. Qui si esclude tutto e si riammette il
+# minimo: cosi' il progetto Android, i suoi build e soprattutto la chiave di
+# firma dell'APK non finiscono caricati su un server che non c'entra nulla.
+/*
+!/docs
+!/vercel.json
