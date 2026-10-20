@@ -170,6 +170,33 @@ stesso partendo da un tag `vX.Y`. Vuole tre secret nel repository:
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("app\release.keystore")) | Set-Clipboard
 ```
 
+## Dove gira la web app
+
+La stessa cartella `docs/` è servita da due posti:
+
+| | indirizzo | si aggiorna |
+|---|---|---|
+| GitHub Pages | <https://zeo93.github.io/LanQuiz/> | da solo a ogni push su `main` |
+| Vercel | <https://lanquiz.vercel.app/> | `vercel deploy --prod` dalla cartella |
+
+Sono **due origini diverse**, quindi due installazioni separate: ripasso, note,
+argomenti e statistiche non passano da una all'altra da sole. Per spostarli si
+usa il backup (*Impostazioni → Backup e trasferimento*).
+
+Due file governano il deploy su Vercel:
+
+- `vercel.json` — dice che la cartella da pubblicare è `docs/`, che non c'è
+  niente da compilare, e fissa gli header che su un hosting nuovo si rompono in
+  silenzio: `sw.js` mai in cache (altrimenti gli aggiornamenti non si vedono) e
+  i banchi dichiarati UTF-8.
+- `.vercelignore` — esclude tutto e riammette solo `docs/`, così il progetto
+  Android, i suoi build e soprattutto `app/release.keystore` non vengono
+  caricati.
+
+Per far ridistribuire Vercel a ogni push come fa Pages serve collegare il repo:
+richiede una connessione GitHub sull'account Vercel (*Settings → Authentication*
+sul sito), poi `vercel git connect` dalla cartella.
+
 ## Chiave di firma
 
 `app/release.keystore` **non è nel repo** (vedi `.gitignore`): su un repository
